@@ -1,0 +1,844 @@
+/* ============================================================================
+   Marketing / public site — landing, guide, privacy, how-it-works, roadmap.
+   Reuses the app's design tokens and component classes verbatim (see index.css).
+   No new colors or tokens are introduced here — only layout.
+   ============================================================================ */
+
+.mkt {
+  /* Marketing pages fill the viewport on laptops/desktops (content stretches up to
+     this cap; only ultra-wide displays beyond it show balanced side margins). */
+  --mkt-max: 1600px;
+  min-height: 100vh;
+  /* Canonical flexbox sticky footer: the content area grows to fill the viewport
+     (footer pins to the bottom on short pages) but never shrinks (flex-shrink:0
+     below), so tall content is never clipped and the page always scrolls. */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Structural marketing links never underline on hover (the global a:hover rule
+   would otherwise underline the brand, nav, footer, and TOC links). */
+.mkt a:hover {
+  text-decoration: none;
+}
+.mkt-brand:hover {
+  color: var(--accent-2);
+}
+.mkt-footer-links a:hover {
+  color: var(--text);
+}
+
+/* ---------- Top navigation ---------- */
+.mkt-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 78%, transparent);
+  backdrop-filter: blur(10px);
+}
+.mkt-nav-inner {
+  max-width: var(--mkt-max);
+  margin-inline: auto;
+  padding: 14px var(--sp-6);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.mkt-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.mkt-brand .logo {
+  font-size: 19px;
+}
+.mkt-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: var(--sp-4);
+}
+.mkt-nav-link {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.mkt-nav-link:hover,
+.mkt-nav-link.active {
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+}
+.mkt-nav-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* ---------- Page scaffold ---------- */
+.mkt-main {
+  flex: 1 0 auto;
+  width: 100%;
+}
+/* Inner wrapper that actually centers the page content — a plain block child of
+   the full-width content area, so margin-inline:auto centering is unambiguous. */
+.mkt-page {
+  max-width: var(--mkt-max);
+  margin-inline: auto;
+  padding: 0 var(--sp-6);
+}
+.mkt-section {
+  padding: var(--sp-12) 0;
+  border-top: 1px solid var(--border);
+}
+.mkt-section:first-child {
+  border-top: none;
+}
+.mkt-eyebrow {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+}
+.mkt-section-title {
+  font-size: clamp(22px, 3.2vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-top: var(--sp-3);
+  max-width: 22ch;
+}
+.mkt-lead {
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+  margin-top: var(--sp-4);
+  max-width: 62ch;
+}
+
+/* ---------- Hero ---------- */
+.mkt-hero {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: var(--sp-12);
+  align-items: center;
+  padding: clamp(48px, 9vw, 104px) 0 var(--sp-12);
+}
+.mkt-hero h1 {
+  font-size: clamp(34px, 6vw, 60px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  margin-top: var(--sp-4);
+}
+.mkt-hero-sub {
+  color: var(--muted);
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.62;
+  margin-top: var(--sp-5);
+  max-width: 52ch;
+}
+.mkt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-8);
+}
+.mkt-btn-lg {
+  padding: 11px 20px;
+  font-size: 15px;
+}
+.mkt-whisper {
+  margin-top: var(--sp-5);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--faint);
+  letter-spacing: -0.01em;
+}
+
+/* The one rim-of-light band, used exactly where the app reserves --rim. */
+.mkt-rim {
+  position: relative;
+  border-radius: var(--radius);
+  box-shadow: var(--rim);
+}
+
+/* Trust micro-stats */
+.mkt-trust {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+  margin-top: var(--sp-8);
+}
+.mkt-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-4);
+}
+.mkt-stat-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.mkt-stat-value {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ---------- Approval demo (interactive, no backend) ---------- */
+.mkt-approval {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-pop), var(--rim);
+  max-width: 420px;
+  margin-left: auto;
+}
+.mkt-approval-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.mkt-approval-title {
+  margin-top: var(--sp-3);
+  font-size: 15px;
+  font-weight: 600;
+}
+.mkt-approval-meta {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.mkt-approval-row {
+  margin-top: var(--sp-3);
+  font-size: 13px;
+  color: var(--muted);
+}
+.mkt-approval-input {
+  margin-top: var(--sp-3);
+}
+.mkt-approval-actions {
+  margin-top: var(--sp-5);
+  display: flex;
+  gap: var(--sp-2);
+}
+.mkt-approval-result {
+  margin-top: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  animation: mkt-fade var(--dur-3) var(--ease-out);
+}
+.mkt-approval-result.ok {
+  color: var(--success);
+}
+.mkt-approval-result.cancelled {
+  color: var(--faint);
+}
+.mkt-replay {
+  margin-top: var(--sp-3);
+  font-size: 12px;
+}
+
+@keyframes mkt-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Pillars ---------- */
+.mkt-pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--sp-4);
+  margin-top: var(--sp-8);
+}
+.mkt-pillar-icon {
+  display: inline-flex;
+  color: var(--accent);
+  opacity: 0.9;
+  margin-bottom: var(--sp-3);
+}
+.mkt-pillar h3 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.mkt-pillar p {
+  margin-top: var(--sp-2);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ---------- Feature showcase ---------- */
+.mkt-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: var(--sp-4);
+  margin-top: var(--sp-8);
+}
+.mkt-feature {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+  transition: transform var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease);
+}
+.mkt-feature:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-2);
+}
+.mkt-feature.guarded {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.mkt-feature-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mkt-feature-head svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.mkt-feature-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+.mkt-feature-line {
+  margin-top: var(--sp-3);
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+.mkt-feature .badge {
+  margin-left: auto;
+}
+.mkt-footnote {
+  margin-top: var(--sp-5);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+/* ---------- Privacy band + boundary diagram ---------- */
+.mkt-band {
+  background: radial-gradient(120% 90% at 50% 0%, var(--glow) 0%, transparent 46%), var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--rim);
+  padding: clamp(28px, 5vw, 52px);
+}
+.mkt-dataflow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-8);
+  margin-top: var(--sp-8);
+}
+.mkt-dataflow h3 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+  margin-bottom: var(--sp-4);
+}
+.mkt-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mkt-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.mkt-list svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.mkt-list.stays svg {
+  color: var(--success);
+}
+.mkt-optin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.mkt-optin-item {
+  border-left: 2px solid var(--info);
+  padding-left: var(--sp-4);
+}
+.mkt-optin-item .t {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--info);
+}
+.mkt-optin-item p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.mkt-reassure {
+  margin-top: var(--sp-8);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  max-width: 64ch;
+}
+
+/* ---------- Stepper ---------- */
+.mkt-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-4);
+  margin-top: var(--sp-8);
+}
+.mkt-step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-5);
+}
+.mkt-step-n {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.mkt-step h3 {
+  margin-top: var(--sp-3);
+  font-size: 15px;
+  font-weight: 600;
+}
+.mkt-step p {
+  margin-top: var(--sp-2);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ---------- CTA ---------- */
+.mkt-cta {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: clamp(40px, 7vw, 80px) var(--sp-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: radial-gradient(120% 90% at 50% 0%, var(--glow) 0%, transparent 42%), var(--surface);
+}
+.mkt-cta .empty-orbit {
+  margin-bottom: var(--sp-3);
+  font-size: 24px;
+}
+.mkt-cta h2 {
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.mkt-cta p {
+  color: var(--muted);
+  font-size: 16px;
+  max-width: 48ch;
+}
+.mkt-cta .mkt-actions {
+  justify-content: center;
+}
+
+/* ---------- Footer ---------- */
+.mkt-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(232, 214, 168, 0.06) inset;
+  margin-top: var(--sp-12);
+}
+.mkt-footer-inner {
+  max-width: var(--mkt-max);
+  margin-inline: auto;
+  padding: var(--sp-8) var(--sp-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4) var(--sp-6);
+}
+.mkt-footer-links {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+}
+.mkt-footer-links a {
+  color: var(--muted);
+  font-size: 13px;
+}
+.mkt-footer-stamp {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+.mkt-footer-note {
+  width: 100%;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* ---------- Guide (sticky TOC + body) ---------- */
+.guide-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--sp-10);
+  align-items: start;
+  /* The guide is a reading document — keep it at a comfortable width and centered
+     within the wider marketing shell. */
+  max-width: 1080px;
+  margin-inline: auto;
+  padding: var(--sp-10) 0 var(--sp-12);
+}
+.guide-toc {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.guide-toc-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+  margin-bottom: var(--sp-3);
+}
+.guide-toc a {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--muted);
+  border-left: 2px solid transparent;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.guide-toc a:hover,
+.guide-toc a.active {
+  background: var(--surface-2);
+  color: var(--text);
+  border-left-color: var(--accent);
+  text-decoration: none;
+}
+.guide-body {
+  min-width: 0;
+  max-width: 70ch;
+}
+.guide-section {
+  padding-bottom: var(--sp-10);
+  scroll-margin-top: 84px;
+}
+.guide-section h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+}
+.guide-section p {
+  margin-top: var(--sp-4);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.68;
+}
+.guide-section ul {
+  margin-top: var(--sp-4);
+  padding-left: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.guide-section li {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* ---------- Roadmap timeline (a central stream with branching milestones) ---------- */
+.timeline {
+  position: relative;
+  list-style: none;
+  max-width: 1360px;
+  margin: var(--sp-10) auto 0;
+  padding: var(--sp-4) 0;
+}
+/* The main stream: a gradient flowing from shipped (green) through in-progress
+   (gold) to planned (faint). */
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to bottom,
+    var(--success) 0%,
+    var(--success) 52%,
+    var(--accent) 72%,
+    var(--border-strong) 100%
+  );
+}
+.tl-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--sp-12);
+  margin-bottom: var(--sp-8);
+}
+.tl-item:last-child {
+  margin-bottom: 0;
+}
+.tl-item:nth-child(odd) .tl-card {
+  grid-column: 1;
+}
+.tl-item:nth-child(even) .tl-card {
+  grid-column: 2;
+}
+
+/* Milestone node, centered on the stream. */
+.tl-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--border-strong);
+  color: var(--faint);
+}
+.tl-item.done .tl-node {
+  background: var(--success);
+  border-color: var(--success);
+  color: #0a0a0c;
+}
+.tl-item.now .tl-node {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow:
+    0 0 0 5px var(--accent-soft),
+    0 0 14px var(--glow);
+}
+
+/* The branch: a short connector from the stream out to each milestone card. */
+.tl-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-1);
+  transition:
+    border-color var(--dur-2) var(--ease),
+    box-shadow var(--dur-2) var(--ease),
+    transform var(--dur-2) var(--ease);
+}
+.tl-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
+}
+.tl-card::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: calc(var(--sp-12) / 2);
+  height: 2px;
+  background: var(--border-strong);
+  transform: translateY(-50%);
+}
+.tl-item:nth-child(odd) .tl-card::before {
+  right: calc(-1 * var(--sp-12) / 2);
+}
+.tl-item:nth-child(even) .tl-card::before {
+  left: calc(-1 * var(--sp-12) / 2);
+}
+
+.roadmap-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.roadmap-head h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.roadmap-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.tl-card ul {
+  list-style: none;
+  margin-top: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tl-card li {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Collapse to a single left-spine stream on narrow screens. */
+@media (max-width: 760px) {
+  .timeline::before {
+    left: 17px;
+  }
+  .tl-item {
+    grid-template-columns: 1fr;
+  }
+  .tl-item:nth-child(odd) .tl-card,
+  .tl-item:nth-child(even) .tl-card {
+    grid-column: 1;
+    margin-left: 48px;
+  }
+  .tl-node {
+    left: 17px;
+  }
+  .tl-item:nth-child(odd) .tl-card::before,
+  .tl-item:nth-child(even) .tl-card::before {
+    left: -31px;
+    right: auto;
+    width: 31px;
+  }
+}
+
+/* ---------- How it works ---------- */
+.hiw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--sp-4);
+  margin-top: var(--sp-8);
+}
+.hiw-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-6);
+}
+.hiw-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.hiw-card h3 svg {
+  color: var(--accent);
+}
+.hiw-card p {
+  margin-top: var(--sp-3);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.hiw-card code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--accent-2);
+  background: var(--surface-3);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 860px) {
+  .mkt-hero {
+    grid-template-columns: 1fr;
+    gap: var(--sp-8);
+    padding-top: var(--sp-12);
+  }
+  .mkt-approval {
+    margin-left: 0;
+  }
+  .mkt-pillars,
+  .mkt-steps,
+  .mkt-dataflow {
+    grid-template-columns: 1fr;
+  }
+  .guide-layout {
+    grid-template-columns: 1fr;
+  }
+  .guide-toc {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .guide-toc-label {
+    width: 100%;
+  }
+  .mkt-nav-links {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .mkt-trust {
+    grid-template-columns: 1fr;
+  }
+}

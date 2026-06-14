@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# editor
+.vscode/
+.idea/
+
+# env: ignore EVERY environment file anywhere in the repo — real configs AND
+# templates. Per request, nothing matching .env* is ever committed (this
+# intentionally includes .env.example; there is no committed env template).
+.env*
+*.env
+
+# verification artifacts
+.playwright-mcp/
