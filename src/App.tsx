@@ -1,32 +1,14 @@
-import {
-  BarChart3,
-  Bell,
-  BookOpen,
-  Brain,
-  CheckSquare,
-  Flame,
-  FolderKanban,
-  Inbox,
-  LayoutDashboard,
-  LayoutGrid,
-  Mail,
-  MessageCircle,
-  MessageSquare,
-  Network,
-  Newspaper,
-  Radio,
-  Sparkles,
-  Target,
-  Wallet,
-} from 'lucide-react'
-import { LogOut } from 'lucide-react'
-import { Link, NavLink, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { ChevronRight, LogOut, Search } from 'lucide-react'
+import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useNewsSummary } from './api/news'
-import { useUnreadCount } from './api/pulse'
 import { useDueReminders } from './api/reminders'
 import { useAuth } from './auth/AuthContext'
+import { CommandPalette } from './components/CommandPalette'
+import { NotificationsBell } from './components/NotificationsBell'
 import { PublicLayout } from './components/public/PublicLayout'
+import { BrandMark, ConfirmProvider, DropdownMenu, ToastProvider } from './components/ui'
+import { HUBS, PRIMARY, hubForPath, navItemForPath } from './lib/nav'
 import { AuthPage } from './pages/AuthPage'
 import { AreaDetailPage } from './pages/AreaDetailPage'
 import { AreasPage } from './pages/AreasPage'
@@ -53,28 +35,6 @@ import { HowItWorksPage } from './pages/public/HowItWorksPage'
 import { LandingPage } from './pages/public/LandingPage'
 import { PrivacyPage } from './pages/public/PrivacyPage'
 import { RoadmapPage } from './pages/public/RoadmapPage'
-
-const NAV = [
-  { to: '/today', label: 'Today', icon: LayoutDashboard },
-  { to: '/chat', label: 'Chat', icon: MessageSquare },
-  { to: '/news', label: 'News', icon: Newspaper },
-  { to: '/pulse', label: 'Pulse', icon: Bell },
-  { to: '/capture', label: 'Capture', icon: Inbox },
-  { to: '/ambient', label: 'Ambient', icon: Radio },
-  { to: '/email', label: 'Email', icon: Mail },
-  { to: '/whatsapp', label: 'WhatsApp', icon: MessageCircle },
-  { to: '/tasks', label: 'Tasks', icon: CheckSquare },
-  { to: '/habits', label: 'Habits', icon: Flame },
-  { to: '/projects', label: 'Projects', icon: FolderKanban },
-  { to: '/goals', label: 'Goals', icon: Target },
-  { to: '/budget', label: 'Budget', icon: Wallet },
-  { to: '/areas', label: 'Areas', icon: LayoutGrid },
-  { to: '/journal', label: 'Journal', icon: BookOpen },
-  { to: '/reflection', label: 'Reflection', icon: Sparkles },
-  { to: '/graph', label: 'Graph', icon: Network },
-  { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/memory', label: 'Memory', icon: Brain },
-]
 
 export function App() {
   const { user, loading } = useAuth()
@@ -139,55 +99,119 @@ function RequireAuth({ loading, authed }: { loading: boolean; authed: boolean })
   return <Outlet />
 }
 
-function AppShell() {
+function Topbar() {
+  const location = useLocation()
   const { user, logout } = useAuth()
+  const hub = hubForPath(location.pathname)
+  const item = navItemForPath(location.pathname)
+  return (
+    <header className="topbar">
+      <nav className="crumbs" aria-label="Breadcrumb">
+        {hub && <span className="crumb-section">{hub.label}</span>}
+        {hub && item && <ChevronRight size={13} className="crumb-sep" />}
+        {item && <span className="crumb-current">{item.label}</span>}
+      </nav>
+      <div className="topbar-right">
+        <button
+          type="button"
+          className="cmdk-trigger"
+          onClick={() => window.dispatchEvent(new Event('cortex:open-cmdk'))}
+          title="Search & commands (⌘K)"
+        >
+          <Search size={14} />
+          <span>Search</span>
+          <kbd className="cmdk-kbd">⌘K</kbd>
+        </button>
+        <NotificationsBell />
+        <DropdownMenu
+          align="right"
+          trigger={
+            <span className="account-trigger">
+              <span className="account-avatar" aria-hidden="true">
+                {user?.name?.[0]?.toUpperCase() ?? '?'}
+              </span>
+              <span className="topbar-user">{user?.name}</span>
+            </span>
+          }
+        >
+          <div className="dropdown-label">
+            <span className="dropdown-name">{user?.name}</span>
+            <span className="muted small">Local · Private</span>
+          </div>
+          <button className="dropdown-item" onClick={() => void logout()}>
+            <LogOut size={15} /> Log out
+          </button>
+        </DropdownMenu>
+      </div>
+    </header>
+  )
+}
+
+function AppShell() {
+  const location = useLocation()
   const dueReminders = useDueReminders()
   const dueCount = dueReminders.data?.length ?? 0
-  const unread = useUnreadCount()
-  const pulseCount = unread.data?.count ?? 0
   const newsSummary = useNewsSummary()
   const newsUnread = newsSummary.data?.unreadTotal ?? 0
-  return (
-    <div className="app">
-      <aside className="sidebar">
-        <Link to="/" className="brand" title="Cortex home">
-          <span className="logo">🧠</span> Cortex
-        </Link>
-        <nav className="nav">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-            >
-              <item.icon size={17} strokeWidth={2} />
-              {item.label}
-              {item.to === '/chat' && dueCount > 0 && (
-                <span className="nav-badge mono">{dueCount}</span>
-              )}
-              {item.to === '/pulse' && pulseCount > 0 && (
-                <span className="nav-badge mono">{pulseCount}</span>
-              )}
-              {item.to === '/news' && newsUnread > 0 && (
-                <span className="nav-badge mono">{newsUnread > 99 ? '99+' : newsUnread}</span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <span className="sidebar-user-name">{user?.name}</span>
-            <span className="muted">Local · Private</span>
-          </div>
-          <button className="icon-btn" aria-label="Log out" title="Log out" onClick={() => void logout()}>
-            <LogOut size={15} />
-          </button>
-        </div>
-      </aside>
+  const activeHub = hubForPath(location.pathname)?.id
 
-      <main className="content">
-        <Outlet />
-      </main>
-    </div>
+  return (
+    <ToastProvider>
+      <ConfirmProvider>
+        <div className="app">
+          <aside className="sidebar">
+            <Link to="/" className="brand" title="Cortex home">
+              <BrandMark />
+              <span>Cortex</span>
+            </Link>
+            <nav className="nav">
+              <div className="nav-group">
+                {PRIMARY.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                  >
+                    <item.icon size={17} strokeWidth={2} />
+                    <span className="nav-item-label">{item.label}</span>
+                    {item.to === '/chat' && dueCount > 0 && (
+                      <span className="nav-badge mono">{dueCount > 99 ? '99+' : dueCount}</span>
+                    )}
+                    {item.to === '/news' && newsUnread > 0 && (
+                      <span className="nav-badge mono">{newsUnread > 99 ? '99+' : newsUnread}</span>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+              <div className="nav-sep" />
+              <div className="nav-group">
+                {HUBS.map((hub) => (
+                  <Link
+                    key={hub.id}
+                    to={hub.items[0].to}
+                    className={`nav-item nav-hub${activeHub === hub.id ? ' active' : ''}`}
+                  >
+                    <hub.icon size={17} strokeWidth={2} />
+                    <span className="nav-item-label">{hub.label}</span>
+                    <ChevronRight size={14} className="nav-hub-caret" />
+                  </Link>
+                ))}
+              </div>
+            </nav>
+            <div className="sidebar-footer">
+              <span className="dot-live" /> Local · Private
+            </div>
+          </aside>
+
+          <div className="main-wrap">
+            <Topbar />
+            <main className="content">
+              <Outlet />
+            </main>
+          </div>
+        </div>
+        <CommandPalette />
+      </ConfirmProvider>
+    </ToastProvider>
   )
 }

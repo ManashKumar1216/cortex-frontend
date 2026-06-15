@@ -199,7 +199,7 @@ function TextPanel() {
       <textarea
         className="input capture-input"
         rows={3}
-        placeholder="What's on your mind? Task, thought, idea — or a command like 'remind me to call Prerna at 7pm'…"
+        placeholder="What's on your mind? Task, thought, idea — or a command"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
       />
@@ -367,7 +367,7 @@ function CallPanel() {
           className="input"
           value={attendees}
           onChange={(e) => setAttendees(e.target.value)}
-          placeholder="Prerna, Raghav"
+          placeholder="Alex, Sam"
         />
       </Field>
       <div className="capture-record">

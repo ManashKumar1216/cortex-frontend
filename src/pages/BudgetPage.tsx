@@ -14,7 +14,7 @@ import {
 } from '../api/budget'
 import { Modal } from '../components/Modal'
 import { AreaSelect } from '../components/selects'
-import { EmptyState, Field, PageHeader } from '../components/ui'
+import { EmptyState, Field, PageHeader, Tabs } from '../components/ui'
 import { formatDay, formatMoney } from '../lib/format'
 import type { BudgetSummary, PaymentMethod, Transaction } from '../lib/types'
 
@@ -45,13 +45,15 @@ export function BudgetPage() {
     <div>
       <PageHeader title="Budget" subtitle="Where your money goes, by life-area" />
 
-      <div className="filter-row">
-        {(['overview', 'ledger', 'bills', 'cards', 'import'] as Tab[]).map((t) => (
-          <button key={t} className={`chip${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-            {t[0].toUpperCase() + t.slice(1)}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onChange={(v) => setTab(v as Tab)}
+        tabs={(['overview', 'ledger', 'bills', 'cards', 'import'] as Tab[]).map((t) => ({
+          value: t,
+          label: t[0].toUpperCase() + t.slice(1),
+        }))}
+      />
+      <div style={{ height: 'var(--sp-2)' }} />
 
       {tab !== 'cards' && tab !== 'import' && (
         <div className="budget-monthnav">

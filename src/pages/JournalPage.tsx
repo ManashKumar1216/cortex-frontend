@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
 
+import { Check, Plus, Trash2 } from 'lucide-react'
+
 import { journal } from '../api/hooks'
 import { Modal } from '../components/Modal'
 import { AreaSelect } from '../components/selects'
-import { EmptyState, Field, PageHeader } from '../components/ui'
+import { Badge, Button, Card, EmptyState, Field, IconButton, Input, PageHeader, SkeletonText, Textarea, useConfirm } from '../components/ui'
 import { MOOD_EMOJI, formatDay } from '../lib/format'
 
 export function JournalPage() {
@@ -11,6 +13,7 @@ export function JournalPage() {
   const { data, isPending, isError, error } = journal.useList(areaFilter ? `?areaId=${areaFilter}` : '')
   const create = journal.useCreate()
   const remove = journal.useRemove()
+  const confirm = useConfirm()
   const [open, setOpen] = useState(false)
 
   // Newest first by date then creation time.
@@ -24,27 +27,27 @@ export function JournalPage() {
         title="Journal"
         subtitle="A line a day"
         action={
-          <button className="btn primary" onClick={() => setOpen(true)}>
-            + Entry
-          </button>
+          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
+            Entry
+          </Button>
         }
       />
       <div className="filter-row area-filter">
         <span className="muted small">Area</span>
         <AreaSelect value={areaFilter} onChange={setAreaFilter} emptyLabel="All areas" />
       </div>
-      {isPending && <p className="muted">Loading…</p>}
+      {isPending && <SkeletonText lines={4} />}
       {isError && <p className="error">{(error as Error).message}</p>}
       {entries.length === 0 && <EmptyState message="No entries yet. Write your first." />}
 
       <div className="list">
         {entries.map((entry) => (
-          <div key={entry.id} className="card row-between">
+          <Card key={entry.id} className="row-between list-row">
             <div>
               <div className="row">
                 <strong>{formatDay(entry.date)}</strong>
-                {entry.mood != null && <span>{MOOD_EMOJI[entry.mood]}</span>}
-                {entry.moodSource === 'ai' && <span className="badge muted">AI mood</span>}
+                {entry.mood != null && <span className="journal-mood">{MOOD_EMOJI[entry.mood]}</span>}
+                {entry.moodSource === 'ai' && <Badge kind="muted">AI mood</Badge>}
                 {entry.title && <span className="muted">— {entry.title}</span>}
               </div>
               {entry.aiSummary && <p className="journal-summary">{entry.aiSummary}</p>}
@@ -59,21 +62,23 @@ export function JournalPage() {
                 </div>
               )}
             </div>
-            <button
-              className="icon-btn"
-              onClick={() => {
-                if (confirm('Delete entry?')) remove.mutate(entry.id)
+            <IconButton
+              label="Delete entry"
+              danger
+              onClick={async () => {
+                if (await confirm({ title: 'Delete entry', message: 'Delete this journal entry?', danger: true, confirmLabel: 'Delete' }))
+                  remove.mutate(entry.id)
               }}
-              aria-label="Delete"
             >
-              ✕
-            </button>
-          </div>
+              <Trash2 size={14} />
+            </IconButton>
+          </Card>
         ))}
       </div>
 
       {open && (
         <JournalModal
+          pending={create.isPending}
           onClose={() => setOpen(false)}
           onSubmit={(body) => create.mutate(body, { onSuccess: () => setOpen(false) })}
         />
@@ -85,9 +90,11 @@ export function JournalPage() {
 function JournalModal({
   onClose,
   onSubmit,
+  pending,
 }: {
   onClose: () => void
   onSubmit: (body: Record<string, unknown>) => void
+  pending: boolean
 }) {
   const [content, setContent] = useState('')
   const [title, setTitle] = useState('')
@@ -100,38 +107,30 @@ function JournalModal({
   }
 
   return (
-    <Modal title="New journal entry" onClose={onClose}>
+    <Modal
+      title="New journal entry"
+      onClose={onClose}
+      actions={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" loading={pending} icon={<Check size={14} />} onClick={submit}>
+            Save
+          </Button>
+        </>
+      }
+    >
       <form className="form" onSubmit={submit}>
         <Field label="What happened?">
-          <textarea
-            className="input"
-            rows={5}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            autoFocus
-          />
+          <Textarea rows={5} value={content} onChange={(e) => setContent(e.target.value)} autoFocus />
         </Field>
         <Field label="Title (optional)">
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
         </Field>
         <Field label={`Mood: ${MOOD_EMOJI[mood]}`}>
-          <input
-            className="input"
-            type="range"
-            min={1}
-            max={5}
-            value={mood}
-            onChange={(e) => setMood(Number(e.target.value))}
-          />
+          <Input type="range" min={1} max={5} value={mood} onChange={(e) => setMood(Number(e.target.value))} />
         </Field>
-        <div className="form-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn primary">
-            Save
-          </button>
-        </div>
       </form>
     </Modal>
   )

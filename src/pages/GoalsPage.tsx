@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
 
+import { Check, FolderOpen, Pencil, Plus, Target, Trash2 } from 'lucide-react'
+
 import { areas, goals } from '../api/hooks'
 import { Modal } from '../components/Modal'
 import { AreaSelect, StatusSelect } from '../components/selects'
-import { EmptyState, Field, PageHeader, StatusBadge } from '../components/ui'
+import { Button, Card, EmptyState, Field, Input, PageHeader, SkeletonText, StatusBadge, Textarea, useConfirm } from '../components/ui'
 import { formatDate } from '../lib/format'
 import type { Goal, Status } from '../lib/types'
 
@@ -14,6 +16,7 @@ export function GoalsPage() {
   const create = goals.useCreate()
   const update = goals.useUpdate()
   const remove = goals.useRemove()
+  const confirm = useConfirm()
   const [editing, setEditing] = useState<Goal | null>(null)
   const [open, setOpen] = useState(false)
 
@@ -25,65 +28,82 @@ export function GoalsPage() {
         title="Goals"
         subtitle="What you're working toward"
         action={
-          <button
-            className="btn primary"
+          <Button
+            variant="primary"
+            icon={<Plus size={14} />}
             onClick={() => {
               setEditing(null)
               setOpen(true)
             }}
           >
-            + Goal
-          </button>
+            Goal
+          </Button>
         }
       />
       <div className="filter-row area-filter">
         <span className="muted small">Area</span>
         <AreaSelect value={areaFilter} onChange={setAreaFilter} emptyLabel="All areas" />
       </div>
-      {isPending && <p className="muted">Loading…</p>}
+      {isPending && <SkeletonText lines={3} />}
       {isError && <p className="error">{(error as Error).message}</p>}
       {data?.length === 0 && <EmptyState message="No goals yet." />}
 
       <div className="list">
         {data?.map((goal) => (
-          <div key={goal.id} className="card row-between">
+          <Card key={goal.id} className="row-between list-row">
             <div>
               <div className="row">
                 <strong>{goal.title}</strong>
                 <StatusBadge status={goal.status} />
               </div>
-              <p className="muted small">
-                {areaName(goal.areaId) && <>📁 {areaName(goal.areaId)} · </>}
-                {goal.targetDate ? `🎯 ${formatDate(goal.targetDate)}` : 'no target date'}
+              <p className="muted small meta-line">
+                {areaName(goal.areaId) && (
+                  <>
+                    <FolderOpen size={12} /> {areaName(goal.areaId)} ·{' '}
+                  </>
+                )}
+                {goal.targetDate ? (
+                  <>
+                    <Target size={12} /> {formatDate(goal.targetDate)}
+                  </>
+                ) : (
+                  'no target date'
+                )}
               </p>
               {goal.description && <p className="muted">{goal.description}</p>}
             </div>
             <div className="card-actions">
-              <button
-                className="btn ghost"
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Pencil size={13} />}
                 onClick={() => {
                   setEditing(goal)
                   setOpen(true)
                 }}
               >
                 Edit
-              </button>
-              <button
-                className="btn ghost danger"
-                onClick={() => {
-                  if (confirm(`Delete goal "${goal.title}"?`)) remove.mutate(goal.id)
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={<Trash2 size={13} />}
+                onClick={async () => {
+                  if (await confirm({ title: 'Delete goal', message: `Delete "${goal.title}"?`, danger: true, confirmLabel: 'Delete' }))
+                    remove.mutate(goal.id)
                 }}
               >
                 Delete
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
       {open && (
         <GoalModal
           goal={editing}
+          pending={create.isPending || update.isPending}
           onClose={() => setOpen(false)}
           onSubmit={(body) => {
             const onSuccess = () => setOpen(false)
@@ -100,10 +120,12 @@ function GoalModal({
   goal,
   onClose,
   onSubmit,
+  pending,
 }: {
   goal: Goal | null
   onClose: () => void
   onSubmit: (body: Record<string, unknown>) => void
+  pending: boolean
 }) {
   const [title, setTitle] = useState(goal?.title ?? '')
   const [description, setDescription] = useState(goal?.description ?? '')
@@ -124,10 +146,23 @@ function GoalModal({
   }
 
   return (
-    <Modal title={goal ? 'Edit goal' : 'New goal'} onClose={onClose}>
+    <Modal
+      title={goal ? 'Edit goal' : 'New goal'}
+      onClose={onClose}
+      actions={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" loading={pending} icon={<Check size={14} />} onClick={submit}>
+            Save
+          </Button>
+        </>
+      }
+    >
       <form className="form" onSubmit={submit}>
         <Field label="Title">
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
         </Field>
         <Field label="Area">
           <AreaSelect value={areaId ?? ''} onChange={setAreaId} />
@@ -136,28 +171,11 @@ function GoalModal({
           <StatusSelect value={status} onChange={setStatus} />
         </Field>
         <Field label="Target date">
-          <input
-            className="input"
-            type="date"
-            value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
-          />
+          <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
         </Field>
         <Field label="Description">
-          <textarea
-            className="input"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
+          <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
-        <div className="form-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn primary">
-            Save
-          </button>
-        </div>
       </form>
     </Modal>
   )

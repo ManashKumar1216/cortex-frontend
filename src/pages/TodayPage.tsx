@@ -1,6 +1,22 @@
 import { useState, type FormEvent } from 'react'
 
-import { CalendarDays, Check, Mail, Plus, RefreshCw, Settings2, Sparkles, Trash2, X } from 'lucide-react'
+import {
+  BookOpen,
+  CalendarDays,
+  Check,
+  CheckSquare,
+  Flame,
+  FolderKanban,
+  ListChecks,
+  Mail,
+  Plus,
+  RefreshCw,
+  Settings2,
+  Sparkles,
+  Trash2,
+  Wallet,
+  X,
+} from 'lucide-react'
 
 import { useBudgetSummary } from '../api/budget'
 import {
@@ -16,7 +32,7 @@ import { tasks, useToday, useToggleHabit } from '../api/hooks'
 import { useDailyPrompt, useMorningBriefing, useRefreshBriefing } from '../api/reflection'
 import { Markdown } from '../components/Markdown'
 import { Modal } from '../components/Modal'
-import { Field, PageHeader } from '../components/ui'
+import { Badge, Button, Card, Field, IconButton, Input, PageHeader, Stat } from '../components/ui'
 import { formatDate, formatDay, formatMoney } from '../lib/format'
 import type { CalendarEvent } from '../lib/types'
 
@@ -39,59 +55,63 @@ export function TodayPage() {
     <div>
       <PageHeader title="Today" subtitle={formatDay(data.date)} />
 
-      {/* Morning briefing (Phase 11) */}
-      {briefing.data ? (
-        <section className="card briefing-card">
-          <div className="row-between">
-            <div className="briefing-head">
-              <Sparkles size={16} /> Morning briefing
-            </div>
-            <button
-              className="btn ghost sm"
+      {/* Morning briefing — verdict-first intelligence */}
+      <Card
+        variant="intelligence"
+        hero
+        eyebrow="Morning briefing"
+        eyebrowIcon={<Sparkles size={15} />}
+        actions={
+          briefing.data && (
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => refreshBriefing.mutate()}
-              disabled={refreshBriefing.isPending}
+              loading={refreshBriefing.isPending}
+              icon={<RefreshCw size={13} />}
               title="Regenerate today's briefing"
             >
-              <RefreshCw size={13} /> {refreshBriefing.isPending ? 'Refreshing…' : 'Refresh'}
-            </button>
-          </div>
+              Refresh
+            </Button>
+          )
+        }
+      >
+        {briefing.data ? (
           <Markdown source={briefing.data.body} />
-        </section>
-      ) : (
-        <section className="card briefing-card briefing-empty">
-          <div className="briefing-head">
-            <Sparkles size={16} /> Morning briefing
+        ) : (
+          <div className="briefing-empty">
+            {prompt.data && <p className="briefing-prompt">{prompt.data.text}</p>}
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => refreshBriefing.mutate()}
+              loading={refreshBriefing.isPending}
+              icon={<Sparkles size={14} />}
+            >
+              Generate briefing
+            </Button>
           </div>
-          {prompt.data && <p className="prompt-text">{prompt.data.text}</p>}
-          <button
-            className="btn primary sm"
-            onClick={() => refreshBriefing.mutate()}
-            disabled={refreshBriefing.isPending}
-          >
-            <Sparkles size={14} /> {refreshBriefing.isPending ? 'Generating…' : 'Generate briefing'}
-          </button>
-        </section>
-      )}
+        )}
+      </Card>
 
-      <div className="stat-row">
-        <Stat label="To do" value={t.incompleteTotal} />
-        <Stat label="Done today" value={t.completedToday} />
-        <Stat label="Habits" value={`${h.doneCount}/${h.dueTotal}`} />
-        <Stat label="Journaled" value={journal.hasEntryToday ? 'yes' : 'no'} />
+      <div className="summary-band">
+        <Stat icon={<CheckSquare size={15} />} value={t.incompleteTotal} label="To do" hint={`${t.completedToday} done today`} />
+        <Stat icon={<Flame size={15} />} value={`${h.doneCount}/${h.dueTotal}`} label="Habits" />
+        <Stat icon={<BookOpen size={15} />} value={journal.hasEntryToday ? 'yes' : '—'} label="Journaled" />
         {budget.data && (
           <Stat
-            label="Spent"
+            icon={<Wallet size={15} />}
             value={formatMoney(budget.data.overall.spent, budget.data.currency.code)}
+            label="Spent"
           />
         )}
       </div>
 
       <CalendarSection events={data.events ?? []} />
 
-      <div className="today-grid">
-        <section className="card">
-          <h2>Do this first</h2>
-          {t.doFirst.length === 0 && <p className="muted">Nothing urgent &amp; important. 🎉</p>}
+      <div className="today-panels">
+        <Card hero eyebrow="Do this first" eyebrowIcon={<ListChecks size={15} />} className="span-2">
+          {t.doFirst.length === 0 && <p className="muted">Nothing urgent &amp; important right now.</p>}
           {t.doFirst.map((task) => (
             <label key={task.id} className="today-row">
               <input
@@ -100,62 +120,60 @@ export function TodayPage() {
                 onChange={() => updateTask.mutate({ id: task.id, body: { completed: true } })}
               />
               <span>{task.title}</span>
-              {task.dueDate && <span className="muted small">{formatDate(task.dueDate)}</span>}
+              {task.dueDate && <span className="muted small mono">{formatDate(task.dueDate)}</span>}
             </label>
           ))}
-          <p className="muted small spaced">
-            Q1 {t.quadrantCounts.Q1} · Q2 {t.quadrantCounts.Q2} · Q3 {t.quadrantCounts.Q3} · Q4{' '}
-            {t.quadrantCounts.Q4}
-          </p>
-        </section>
+          <div className="quad-summary">
+            {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map((q) => (
+              <span key={q} className="quad-chip">
+                <span className="mono">{q}</span> {t.quadrantCounts[q]}
+              </span>
+            ))}
+          </div>
+        </Card>
 
-        <section className="card">
-          <h2>Habits</h2>
+        <Card eyebrow="Habits" eyebrowIcon={<Flame size={15} />}>
           {h.items.length === 0 && <p className="muted">No habits due today.</p>}
           {h.items.map((habit) => (
             <div key={habit.id} className="today-row">
               <button
                 className={`check${habit.doneToday ? ' done' : ''}`}
+                aria-label={habit.doneToday ? 'Mark not done' : 'Mark done'}
                 onClick={() => toggleHabit.mutate({ id: habit.id, done: !habit.doneToday })}
               >
-                {habit.doneToday ? '✓' : ''}
+                {habit.doneToday && <Check size={13} strokeWidth={3} />}
               </button>
               <span className={habit.doneToday ? 'struck' : ''}>{habit.name}</span>
-              <span className="muted small">🔥 {habit.currentStreak}</span>
+              <span className="muted small streak">
+                <Flame size={12} /> {habit.currentStreak}
+              </span>
             </div>
           ))}
-        </section>
+        </Card>
 
-        <section className="card">
-          <h2>What I'm building</h2>
+        <Card eyebrow="What I'm building" eyebrowIcon={<FolderKanban size={15} />}>
           {projects.length === 0 && <p className="muted">No active projects.</p>}
           {projects.map((project) => (
             <div key={project.id} className="today-row">
               <span>{project.title}</span>
-              {project.overdue && <span className="badge bad">overdue</span>}
-              <span className="muted small">w{project.weight}</span>
+              {project.overdue && <Badge kind="bad">overdue</Badge>}
+              <span className="muted small mono">w{project.weight}</span>
             </div>
           ))}
-        </section>
+        </Card>
 
-        <section className="card">
-          <h2>Journal</h2>
+        <Card eyebrow="Journal" eyebrowIcon={<BookOpen size={15} />} className="span-2">
           {journal.entries.length === 0 ? (
             <p className="muted">No entry today yet.</p>
           ) : (
-            journal.entries.map((entry) => <p key={entry.id} className="journal-content">{entry.content}</p>)
+            journal.entries.map((entry) => (
+              <p key={entry.id} className="journal-content">
+                {entry.content}
+              </p>
+            ))
           )}
-        </section>
+        </Card>
       </div>
-    </div>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="stat">
-      <div className="stat-value">{value}</div>
-      <div className="stat-label">{label}</div>
     </div>
   )
 }
@@ -176,16 +194,15 @@ function CalendarSection({ events }: { events: CalendarEvent[] }) {
   const pending = (suggested.data ?? []).filter((e) => e.status === 'suggested')
 
   return (
-    <section className="card cal-section">
-      <div className="row-between">
-        <h2>
-          <CalendarDays size={16} /> On your calendar
-        </h2>
-        <button className="btn ghost sm" onClick={() => setManage(true)} title="Manage calendar feeds">
-          <Settings2 size={13} /> Feeds
-        </button>
-      </div>
-
+    <Card
+      eyebrow="On your calendar"
+      eyebrowIcon={<CalendarDays size={15} />}
+      actions={
+        <Button variant="ghost" size="sm" onClick={() => setManage(true)} icon={<Settings2 size={13} />} title="Manage calendar feeds">
+          Feeds
+        </Button>
+      }
+    >
       {events.length === 0 && pending.length === 0 && (
         <p className="muted small">
           No upcoming events. Add an iCal feed under <strong>Feeds</strong>, or events found in your email will
@@ -215,12 +232,12 @@ function CalendarSection({ events }: { events: CalendarEvent[] }) {
               <span className="cal-when mono">{fmtEventWhen(e)}</span>
               <span className="cal-title">{e.title}</span>
               <span className="cal-event-actions">
-                <button className="btn ghost sm" disabled={confirm.isPending} onClick={() => confirm.mutate(e.id)}>
-                  <Check size={13} /> Add
-                </button>
-                <button className="btn ghost sm" disabled={dismiss.isPending} onClick={() => dismiss.mutate(e.id)}>
-                  <X size={13} />
-                </button>
+                <Button variant="ghost" size="sm" disabled={confirm.isPending} onClick={() => confirm.mutate(e.id)} icon={<Check size={13} />}>
+                  Add
+                </Button>
+                <Button variant="ghost" size="sm" disabled={dismiss.isPending} onClick={() => dismiss.mutate(e.id)} icon={<X size={13} />}>
+                  {''}
+                </Button>
               </span>
             </div>
           ))}
@@ -228,7 +245,7 @@ function CalendarSection({ events }: { events: CalendarEvent[] }) {
       )}
 
       {manage && <CalendarFeedsModal onClose={() => setManage(false)} />}
-    </section>
+    </Card>
   )
 }
 
@@ -273,29 +290,28 @@ function CalendarFeedsModal({ onClose }: { onClose: () => void }) {
                     : 'not synced yet'}
               </span>
             </div>
-            <button className="btn ghost sm" disabled={sync.isPending} onClick={() => sync.mutate(s.id)} title="Sync now">
-              <RefreshCw size={13} className={sync.isPending ? 'spin' : undefined} />
-            </button>
-            <button
-              className="icon-btn"
+            <IconButton label="Sync now" disabled={sync.isPending} onClick={() => sync.mutate(s.id)}>
+              <RefreshCw size={14} className={sync.isPending ? 'spin' : undefined} />
+            </IconButton>
+            <IconButton
+              label="Remove feed"
+              danger
               onClick={() => {
                 if (confirm(`Remove "${s.label}" and its events?`)) remove.mutate(s.id)
               }}
-              aria-label="Remove feed"
             >
               <Trash2 size={14} />
-            </button>
+            </IconButton>
           </div>
         ))}
       </div>
 
       <form className="form cal-feed-add" onSubmit={submit}>
         <Field label="Label">
-          <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Personal" />
+          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Personal" />
         </Field>
         <Field label="Secret iCal (.ics) URL">
-          <input
-            className="input"
+          <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://calendar.google.com/…/basic.ics"
@@ -307,12 +323,12 @@ function CalendarFeedsModal({ onClose }: { onClose: () => void }) {
         </p>
         {add.isError && <p className="error small">{(add.error as Error).message}</p>}
         <div className="form-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={onClose}>
             Close
-          </button>
-          <button type="submit" className="btn primary" disabled={!label.trim() || !url.trim() || add.isPending}>
-            <Plus size={14} /> {add.isPending ? 'Adding…' : 'Add feed'}
-          </button>
+          </Button>
+          <Button type="submit" variant="primary" disabled={!label.trim() || !url.trim()} loading={add.isPending} icon={<Plus size={14} />}>
+            Add feed
+          </Button>
         </div>
       </form>
     </Modal>

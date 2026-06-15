@@ -187,6 +187,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--sp-4);
+  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.018);
 }
 .mkt-stat-label {
   font-family: var(--font-mono);
@@ -315,6 +316,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--sp-5);
+  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.018);
   transition: transform var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease),
     box-shadow var(--dur-2) var(--ease);
 }
@@ -440,6 +442,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--sp-5);
+  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.018);
 }
 .mkt-step-n {
   font-family: var(--font-mono);

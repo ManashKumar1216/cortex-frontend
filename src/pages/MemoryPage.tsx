@@ -19,7 +19,7 @@ import { notes, useGenerateRollup, useRollups } from '../api/memory'
 import { resources, useRefetchResource } from '../api/resources'
 import { Modal } from '../components/Modal'
 import { AreaSelect } from '../components/selects'
-import { EmptyState, Field, PageHeader } from '../components/ui'
+import { EmptyState, Field, PageHeader, Tabs } from '../components/ui'
 import { formatDay } from '../lib/format'
 import type { Resource, ResourceKind, ResourceStatus } from '../lib/types'
 
@@ -38,17 +38,12 @@ export function MemoryPage() {
     <div>
       <PageHeader title="Memory" subtitle="What Cortex remembers about you" />
 
-      <div className="mem-tabs filter-row">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            className={`chip${tab === t.key ? ' active' : ''}`}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onChange={(v) => setTab(v as Tab)}
+        tabs={TABS.map((t) => ({ value: t.key, label: t.label }))}
+      />
+      <div style={{ height: 'var(--sp-2)' }} />
 
       {tab === 'notes' && <NotesTab />}
       {tab === 'resources' && <ResourcesTab />}

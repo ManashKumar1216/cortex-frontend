@@ -1,11 +1,18 @@
 import { useState, type FormEvent } from 'react'
 
+import { Cpu, Lock, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/AuthContext'
-import { Field } from '../components/ui'
+import { BrandMark, Button, Field, Input, Tabs } from '../components/ui'
 
 type Mode = 'login' | 'signup'
+
+const VALUES = [
+  { icon: ShieldCheck, text: 'No telemetry — nothing leaves this machine' },
+  { icon: Cpu, text: 'A local LLM thinks with you, grounded in your data' },
+  { icon: Lock, text: 'Accounts and data live only on your disk' },
+]
 
 export function AuthPage() {
   const { login, signup } = useAuth()
@@ -30,39 +37,48 @@ export function AuthPage() {
   }
 
   return (
-    <div className="auth-screen">
+    <div className="auth-hero">
       <div className="auth-card card">
         <Link to="/" className="auth-brand" title="Cortex home">
-          <span className="logo">🧠</span> Cortex
+          <span className="auth-mark">
+            <BrandMark size={34} />
+          </span>
         </Link>
-        <p className="auth-tagline">Your local, private second brain.</p>
+        <p className="page-eyebrow" style={{ textAlign: 'center' }}>
+          Local · Private · Yours
+        </p>
+        <h1 className="auth-title">Your second brain.</h1>
+        <p className="auth-tagline">A thinking partner that runs entirely on your machine.</p>
 
-        <div className="auth-tabs">
-          <button
-            className={`auth-tab${mode === 'login' ? ' active' : ''}`}
-            onClick={() => { setMode('login'); setError(null) }}
-            type="button"
-          >
-            Log in
-          </button>
-          <button
-            className={`auth-tab${mode === 'signup' ? ' active' : ''}`}
-            onClick={() => { setMode('signup'); setError(null) }}
-            type="button"
-          >
-            Sign up
-          </button>
+        <div className="auth-values">
+          {VALUES.map((v) => (
+            <span key={v.text} className="auth-value">
+              <v.icon size={15} strokeWidth={2} /> {v.text}
+            </span>
+          ))}
         </div>
 
-        <form className="form" onSubmit={submit}>
+        <Tabs
+          variant="segmented"
+          value={mode}
+          onChange={(v) => {
+            setMode(v as Mode)
+            setError(null)
+          }}
+          tabs={[
+            { value: 'login', label: 'Log in' },
+            { value: 'signup', label: 'Sign up' },
+          ]}
+        />
+
+        <form className="form" onSubmit={submit} style={{ marginTop: 'var(--sp-4)' }}>
           {mode === 'signup' && (
             <Field label="Name">
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoFocus />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoFocus />
             </Field>
           )}
           <Field label="Email">
-            <input
-              className="input"
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -71,8 +87,7 @@ export function AuthPage() {
             />
           </Field>
           <Field label="Password">
-            <input
-              className="input"
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -80,9 +95,9 @@ export function AuthPage() {
             />
           </Field>
           {error && <p className="error">{error}</p>}
-          <button type="submit" className="btn primary auth-submit" disabled={busy}>
-            {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}
-          </button>
+          <Button type="submit" variant="primary" full loading={busy} className="auth-submit">
+            {mode === 'signup' ? 'Create account' : 'Log in'}
+          </Button>
         </form>
 
         <p className="auth-foot muted">No email verification — accounts and all data stay on this machine.</p>

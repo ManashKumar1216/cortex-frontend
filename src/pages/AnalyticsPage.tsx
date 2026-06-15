@@ -1,12 +1,24 @@
 import { useState } from 'react'
 
-import { RefreshCw, Sparkles } from 'lucide-react'
+import {
+  BarChart3,
+  BookOpen,
+  CheckSquare,
+  Flame,
+  FolderKanban,
+  Inbox,
+  RefreshCw,
+  Smile,
+  Sparkles,
+  Target,
+  Wallet,
+} from 'lucide-react'
 
 import { useAnalytics, useAnalyticsVerdict, useRefreshVerdict } from '../api/analytics'
 import { ActivityHeatmap } from '../components/ActivityHeatmap'
 import { Markdown } from '../components/Markdown'
 import { MoodChart } from '../components/MoodChart'
-import { PageHeader } from '../components/ui'
+import { Button, Card, Chip, PageHeader, SkeletonText, Stat } from '../components/ui'
 import { formatMoney } from '../lib/format'
 import type { AnalyticsData } from '../lib/types'
 
@@ -36,66 +48,77 @@ export function AnalyticsPage() {
         title="Analytics"
         subtitle="The numbers across your second brain"
         action={
-          <div className="filter-row">
+          <div className="filter-row" style={{ marginBottom: 0 }}>
             {RANGES.map((r) => (
-              <button key={r.days} className={`chip${days === r.days ? ' active' : ''}`} onClick={() => setDays(r.days)}>
+              <Chip key={r.days} active={days === r.days} onClick={() => setDays(r.days)}>
                 {r.label}
-              </button>
+              </Chip>
             ))}
           </div>
         }
       />
 
-      {/* AI verdict */}
-      <section className="card analytics-verdict">
-        <div className="row-between">
-          <span className="agent-title">
-            <Sparkles size={16} /> Verdict
-          </span>
-          <button className="btn ghost sm" onClick={() => refresh.mutate(days)} disabled={refresh.isPending}>
-            <RefreshCw size={14} className={refresh.isPending ? 'spin' : undefined} />{' '}
-            {verdict.data ? 'Refresh' : 'Generate analysis'}
-          </button>
-        </div>
+      {/* AI verdict — verdict-first */}
+      <Card
+        variant="intelligence"
+        hero
+        className="analytics-verdict"
+        eyebrow="Verdict"
+        eyebrowIcon={<Sparkles size={15} />}
+        actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => refresh.mutate(days)}
+            loading={refresh.isPending}
+            icon={<RefreshCw size={14} />}
+          >
+            {verdict.data ? 'Refresh' : 'Generate'}
+          </Button>
+        }
+      >
         {refresh.isPending ? (
-          <p className="muted">Reading your numbers…</p>
+          <SkeletonText lines={3} />
         ) : verdict.data ? (
           <Markdown source={verdict.data.body} />
         ) : (
-          <p className="muted small">Generate an AI read on what your numbers say over this period.</p>
+          <p className="briefing-prompt">
+            Generate an AI read on what your numbers say over this period — what's working, what's
+            drifting, and the one thing to change.
+          </p>
         )}
-      </section>
+      </Card>
 
-      {analytics.isPending && <p className="muted">Crunching…</p>}
+      {analytics.isPending && <SkeletonText lines={4} />}
 
       {a && (
         <>
-          {/* Tiles */}
-          <div className="stat-row analytics-tiles">
-            <Tile value={a.tiles.tasksCompleted} label={`Tasks done · ${days}d`} />
-            <Tile value={`${Math.round(a.tiles.completionRate * 100)}%`} label="Completion" />
-            <Tile value={a.tiles.openTasks} label="Open tasks" />
-            <Tile value={a.tiles.habitLogs} label="Habit check-ins" />
-            <Tile value={a.tiles.journalEntries} label={`Journal · ${a.tiles.journalingDays}d`} />
-            <Tile value={a.tiles.avgMood != null ? `${a.tiles.avgMood}` : '—'} label="Avg mood" />
-            <Tile value={a.tiles.captures} label="Captures" />
+          {/* Headline metrics */}
+          <div className="summary-band">
+            <Stat size="lg" icon={<CheckSquare size={15} />} value={a.tiles.tasksCompleted} label={`Tasks done · ${days}d`} />
+            <Stat size="lg" icon={<Target size={15} />} value={`${Math.round(a.tiles.completionRate * 100)}%`} label="Completion" />
+            <Stat size="lg" icon={<BarChart3 size={15} />} value={a.tiles.openTasks} label="Open tasks" />
             {a.tiles.spend != null && a.spend && (
-              <Tile value={formatMoney(a.tiles.spend, a.spend.currency.code)} label="Spent" />
+              <Stat size="lg" icon={<Wallet size={15} />} value={formatMoney(a.tiles.spend, a.spend.currency.code)} label="Spent" />
             )}
-            <Tile value={a.tiles.activeProjects} label="Projects" />
-            <Tile value={a.tiles.activeGoals} label="Goals" />
+            <Stat size="lg" icon={<Smile size={15} />} value={a.tiles.avgMood != null ? `${a.tiles.avgMood}` : '—'} label="Avg mood" />
           </div>
 
-          {/* Activity heatmap */}
-          <section className="card analytics-section">
-            <h2>Activity</h2>
+          {/* Secondary metrics */}
+          <div className="summary-band">
+            <Stat size="sm" icon={<Flame size={14} />} value={a.tiles.habitLogs} label="Habit check-ins" />
+            <Stat size="sm" icon={<BookOpen size={14} />} value={a.tiles.journalEntries} label={`Journal · ${a.tiles.journalingDays}d`} />
+            <Stat size="sm" icon={<Inbox size={14} />} value={a.tiles.captures} label="Captures" />
+            <Stat size="sm" icon={<FolderKanban size={14} />} value={a.tiles.activeProjects} label="Projects" />
+            <Stat size="sm" icon={<Target size={14} />} value={a.tiles.activeGoals} label="Goals" />
+          </div>
+
+          <Card eyebrow="Activity" className="analytics-section">
             <ActivityHeatmap days={a.heatmap.days} max={a.heatmap.max} />
-          </section>
+          </Card>
 
           <div className="analytics-grid">
-            {/* Throughput */}
-            <section className="card analytics-section">
-              <h2>Task throughput</h2>
+            <Card eyebrow="Task throughput" className="analytics-section">
               {a.throughput.length === 0 ? (
                 <p className="muted small">No task activity in this window.</p>
               ) : (
@@ -107,11 +130,9 @@ export function AnalyticsPage() {
                   }))}
                 />
               )}
-            </section>
+            </Card>
 
-            {/* Attention by area */}
-            <section className="card analytics-section">
-              <h2>Where attention went</h2>
+            <Card eyebrow="Where attention went" className="analytics-section">
               {a.byArea.filter((x) => x.count > 0).length === 0 ? (
                 <p className="muted small">No filed activity yet.</p>
               ) : (
@@ -122,26 +143,21 @@ export function AnalyticsPage() {
                     .map((x) => ({ label: x.name, value: x.count, color: x.color, sub: `${x.pct}%` }))}
                 />
               )}
-            </section>
+            </Card>
 
-            {/* Eisenhower mix */}
-            <section className="card analytics-section">
-              <h2>Open tasks by quadrant</h2>
+            <Card eyebrow="Open tasks by quadrant" className="analytics-section">
               <Bars items={QUAD_META.map((q) => ({ label: q.label, value: a.quadrants[q.key], color: q.color }))} />
-            </section>
+            </Card>
 
-            {/* Mood */}
-            <section className="card analytics-section">
-              <div className="row-between">
-                <h2>Mood</h2>
-                {a.mood.avg != null && <span className="muted small">avg {a.mood.avg}/5 · {a.mood.trend}</span>}
-              </div>
+            <Card
+              eyebrow="Mood"
+              className="analytics-section"
+              actions={a.mood.avg != null ? <span className="muted small">avg {a.mood.avg}/5 · {a.mood.trend}</span> : undefined}
+            >
               <MoodChart points={a.mood.points} />
-            </section>
+            </Card>
 
-            {/* Habits */}
-            <section className="card analytics-section">
-              <h2>Habit consistency</h2>
+            <Card eyebrow="Habit consistency" className="analytics-section">
               {a.habits.length === 0 ? (
                 <p className="muted small">No active habits.</p>
               ) : (
@@ -155,17 +171,18 @@ export function AnalyticsPage() {
                           <span key={i} className={`habit-cell${on ? ' on' : ''}`} />
                         ))}
                       </span>
-                      <span className="muted small mono">🔥{h.currentStreak}</span>
+                      <span className="muted small streak mono">
+                        <Flame size={12} />
+                        {h.currentStreak}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
-            </section>
+            </Card>
 
-            {/* Spend */}
             {a.spend && a.spend.byArea.length > 0 && (
-              <section className="card analytics-section">
-                <h2>Spending by area</h2>
+              <Card eyebrow="Spending by area" className="analytics-section">
                 <Bars
                   items={a.spend.byArea.slice(0, 8).map((s) => ({
                     label: s.name,
@@ -174,24 +191,20 @@ export function AnalyticsPage() {
                     sub: formatMoney(s.amount, a.spend!.currency.code),
                   }))}
                 />
-              </section>
+              </Card>
             )}
 
-            {/* Usage */}
-            <section className="card analytics-section">
-              <h2>Capture &amp; chat usage</h2>
-              <div className="stat-row">
-                <Tile value={a.usage.capturesByKind.text} label="Typed" />
-                <Tile value={a.usage.capturesByKind.voice} label="Voice" />
-                <Tile value={a.usage.capturesByKind.photo} label="Photo" />
-                <Tile value={a.usage.chatTotal} label="Chat msgs" />
+            <Card eyebrow="Capture & chat usage" className="analytics-section">
+              <div className="summary-band">
+                <Stat size="sm" value={a.usage.capturesByKind.text} label="Typed" />
+                <Stat size="sm" value={a.usage.capturesByKind.voice} label="Voice" />
+                <Stat size="sm" value={a.usage.capturesByKind.photo} label="Photo" />
+                <Stat size="sm" value={a.usage.chatTotal} label="Chat msgs" />
               </div>
-            </section>
+            </Card>
 
-            {/* Going quiet */}
             {(a.goingQuiet.areas.length > 0 || a.goingQuiet.projects.length > 0) && (
-              <section className="card analytics-section">
-                <h2>Going quiet</h2>
+              <Card eyebrow="Going quiet" className="analytics-section">
                 {a.goingQuiet.areas.length > 0 && (
                   <p className="small">
                     <span className="muted">Areas:</span> {a.goingQuiet.areas.map((x) => x.name).join(', ')}
@@ -207,20 +220,11 @@ export function AnalyticsPage() {
                     ))}
                   </div>
                 )}
-              </section>
+              </Card>
             )}
           </div>
         </>
       )}
-    </div>
-  )
-}
-
-function Tile({ value, label }: { value: string | number; label: string }) {
-  return (
-    <div className="stat">
-      <span className="stat-value mono">{value}</span>
-      <span className="stat-label">{label}</span>
     </div>
   )
 }

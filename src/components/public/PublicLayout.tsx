@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 
 import { useAuth } from '../../auth/AuthContext'
+import { BrandMark } from '../ui'
 
 const NAV = [
   { to: '/guide', label: 'Guide' },
@@ -16,7 +17,7 @@ export function PublicLayout() {
       <header className="mkt-nav">
         <div className="mkt-nav-inner">
           <Link to="/" className="mkt-brand">
-            <span className="logo">🧠</span> Cortex
+            <BrandMark size={20} /> Cortex
           </Link>
           <nav className="mkt-nav-links">
             {NAV.map((item) => (
@@ -57,7 +58,7 @@ export function PublicLayout() {
       <footer className="mkt-footer">
         <div className="mkt-footer-inner">
           <Link to="/" className="mkt-brand">
-            <span className="logo">🧠</span> Cortex
+            <BrandMark size={20} /> Cortex
           </Link>
           <div className="mkt-footer-links">
             <Link to="/guide">Guide</Link>

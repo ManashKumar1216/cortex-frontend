@@ -12,7 +12,7 @@ import {
   uploadAmbientSegment,
 } from '../api/ambient'
 import { Markdown } from '../components/Markdown'
-import { EmptyState, PageHeader } from '../components/ui'
+import { Badge, Button, Card, EmptyState, PageHeader, useConfirm } from '../components/ui'
 import { formatDate } from '../lib/format'
 import { startRecording, type Recorder } from '../lib/recorder'
 
@@ -93,6 +93,7 @@ export function AmbientPage() {
   const regen = useRegenerateToken()
   const forget = useForgetAmbient()
   const synth = useSynthesizeAmbient()
+  const confirm = useConfirm()
   const [revealed, setRevealed] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -136,20 +137,17 @@ export function AmbientPage() {
     <div>
       <PageHeader title="Ambient" subtitle="Passive listening — folds spoken context into your brain" />
 
-      <section className="card ambient-warn">
-        <div className="ambient-warn-head">
-          <ShieldAlert size={16} /> Run this only where it's acceptable
-        </div>
+      <Card className="ambient-warn" eyebrow="Run this only where it's acceptable" eyebrowIcon={<ShieldAlert size={15} />}>
         <p className="muted small">
           Ambient capture records the people around you and stores the spoken context to your private brain.
           Raw audio is <strong>never kept</strong> — it's transcribed and discarded immediately. Silence is dropped,
           transcripts auto-delete after {status.data?.retentionDays ?? 14} days, and you can erase everything at any
           time. It stays off until you turn it on.
         </p>
-      </section>
+      </Card>
 
-      {/* Listening toggle + browser mic */}
-      <section className="card ambient-control">
+      {/* Listening control — the hero of this surface */}
+      <Card hero className="ambient-control">
         <div className="row-between">
           <div className="ambient-status">
             <span className={`ambient-dot${listening ? ' on' : ''}`} />
@@ -161,13 +159,14 @@ export function AmbientPage() {
               </span>
             </div>
           </div>
-          <button
-            className={`btn ${listening ? 'ghost' : 'primary'}`}
-            disabled={toggle.isPending}
+          <Button
+            variant={listening ? 'ghost' : 'primary'}
+            loading={toggle.isPending}
+            icon={listening ? <Pause size={15} /> : <Play size={15} />}
             onClick={() => toggle.mutate(!listening)}
           >
-            {listening ? <Pause size={15} /> : <Play size={15} />} {listening ? 'Pause' : 'Start listening'}
-          </button>
+            {listening ? 'Pause' : 'Start listening'}
+          </Button>
         </div>
 
         <div className="ambient-mic">
@@ -177,6 +176,7 @@ export function AmbientPage() {
             disabled={!listening}
             onClick={() => (mic.active ? mic.stop() : mic.start())}
             title={listening ? 'Capture from this tab’s microphone' : 'Start listening first'}
+            aria-label={mic.active ? 'Stop capturing' : 'Capture from microphone'}
           >
             {mic.active ? <Square size={20} /> : <Mic size={20} />}
           </button>
@@ -188,62 +188,18 @@ export function AmbientPage() {
                 : 'Tap to capture from this tab’s mic (or stream from the mobile app via the ingest token).'}
           </p>
         </div>
-      </section>
-
-      {/* Ingest token for the external device */}
-      <section className="card ambient-token">
-        <div className="row-between">
-          <h2>
-            <KeyRound size={16} /> Device ingest token
-          </h2>
-          <button className="btn ghost sm" disabled={regen.isPending} onClick={() => regen.mutate(undefined, { onSuccess: (r) => setRevealed(r.token) })}>
-            <RefreshCw size={13} /> {status.data?.tokenSet ? 'Regenerate' : 'Generate'}
-          </button>
-        </div>
-        <p className="muted small">
-          The mobile app streams audio to the webhook below using this bearer token. It does its own recording;
-          Cortex transcribes and keeps only the text.
-        </p>
-        {revealed ? (
-          <div className="ambient-token-reveal">
-            <span className="muted small">Copy it now — it won’t be shown again:</span>
-            <div className="ambient-token-row">
-              <code className="ambient-token-value">{revealed}</code>
-              <button className="btn ghost sm" onClick={() => void copyToken(revealed)}>
-                <Copy size={13} /> {copied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className="muted small">
-            {status.data?.tokenSet ? (
-              <>Token set (ends ••{status.data.tokenHint}). Regenerate to get a new one.</>
-            ) : (
-              <>No token yet — generate one to arm the device webhook.</>
-            )}
-          </p>
-        )}
-        <div className="ambient-endpoint">
-          <span className="muted small">Endpoint (POST audio as <code>audio</code>, or JSON <code>{'{ text }'}</code>):</span>
-          <div className="ambient-token-row">
-            <code className="ambient-token-value">{WEBHOOK_URL}</code>
-            <button className="btn ghost sm" onClick={() => void copyToken(WEBHOOK_URL)}>
-              <Copy size={13} /> Copy
-            </button>
-          </div>
-        </div>
-      </section>
+      </Card>
 
       {/* On-demand synthesis */}
-      <section className="card ambient-synth">
-        <div className="row-between">
-          <h2>
-            <Sparkles size={16} /> Synthesis
-          </h2>
-          <button className="btn ghost sm" disabled={synth.isPending} onClick={() => synth.mutate(7)}>
-            <Sparkles size={13} /> {synth.isPending ? 'Distilling…' : 'Synthesize last 7 days'}
-          </button>
-        </div>
+      <Card
+        eyebrow="Synthesis"
+        eyebrowIcon={<Sparkles size={15} />}
+        actions={
+          <Button variant="ghost" size="sm" loading={synth.isPending} icon={<Sparkles size={13} />} onClick={() => synth.mutate(7)}>
+            Synthesize last 7 days
+          </Button>
+        }
+      >
         {synth.data ? (
           synth.data.empty ? (
             <p className="muted small">No ambient notes in the last 7 days to distill.</p>
@@ -256,25 +212,35 @@ export function AmbientPage() {
         ) : (
           <p className="muted small">A calm digest of recurring themes from your ambient notes.</p>
         )}
-      </section>
+      </Card>
 
       {/* Recent transcripts + forget-all */}
-      <section className="card ambient-list">
-        <div className="row-between">
-          <h2>Recent transcripts</h2>
-          {(status.data?.stored ?? 0) > 0 && (
-            <button
-              className="btn danger sm"
-              disabled={forget.isPending}
-              onClick={() => {
-                if (confirm('Forget ALL ambient data? This deletes every transcript and its memory. Cannot be undone.'))
+      <Card
+        eyebrow="Recent transcripts"
+        actions={
+          (status.data?.stored ?? 0) > 0 && (
+            <Button
+              variant="danger"
+              size="sm"
+              loading={forget.isPending}
+              icon={<Trash2 size={13} />}
+              onClick={async () => {
+                if (
+                  await confirm({
+                    title: 'Forget all ambient data',
+                    message: 'This deletes every transcript and its memory. This cannot be undone.',
+                    danger: true,
+                    confirmLabel: 'Forget all',
+                  })
+                )
                   forget.mutate()
               }}
             >
-              <Trash2 size={13} /> Forget all
-            </button>
-          )}
-        </div>
+              Forget all
+            </Button>
+          )
+        }
+      >
         {transcripts.isPending && <p className="muted small">Loading…</p>}
         {transcripts.data && transcripts.data.length === 0 && (
           <p className="muted small">Nothing captured yet. Turn on listening, or stream from the mobile app.</p>
@@ -284,14 +250,63 @@ export function AmbientPage() {
             <div key={t.id} className="ambient-transcript">
               <div className="ambient-transcript-meta">
                 <span className="mono muted small">{formatDate(t.capturedAt)}</span>
-                {t.lang && <span className="badge muted">{t.lang}</span>}
-                <span className="badge muted">{t.source}</span>
+                {t.lang && <Badge kind="muted">{t.lang}</Badge>}
+                <Badge kind="muted">{t.source}</Badge>
               </div>
               <p className="ambient-transcript-text">{t.text}</p>
             </div>
           ))}
         </div>
-      </section>
+      </Card>
+
+      {/* Device setup — demoted into an advanced disclosure */}
+      <details className="card ambient-advanced">
+        <summary className="ambient-advanced-summary">
+          <KeyRound size={15} /> Device setup — stream from the mobile app
+          <span className="muted small">
+            {status.data?.tokenSet ? `token ends ••${status.data.tokenHint}` : 'no token yet'}
+          </span>
+        </summary>
+        <div className="ambient-advanced-body">
+          <div className="row-between">
+            <p className="muted small" style={{ maxWidth: '60ch' }}>
+              The mobile app streams audio to the webhook below using this bearer token. It does its own
+              recording; Cortex transcribes and keeps only the text.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={regen.isPending}
+              icon={<RefreshCw size={13} />}
+              onClick={() => regen.mutate(undefined, { onSuccess: (r) => setRevealed(r.token) })}
+            >
+              {status.data?.tokenSet ? 'Regenerate' : 'Generate'}
+            </Button>
+          </div>
+          {revealed && (
+            <div className="ambient-token-reveal">
+              <span className="muted small">Copy it now — it won’t be shown again:</span>
+              <div className="ambient-token-row">
+                <code className="ambient-token-value">{revealed}</code>
+                <Button variant="ghost" size="sm" icon={<Copy size={13} />} onClick={() => void copyToken(revealed)}>
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+              </div>
+            </div>
+          )}
+          <div className="ambient-endpoint">
+            <span className="muted small">
+              Endpoint (POST audio as <code>audio</code>, or JSON <code>{'{ text }'}</code>):
+            </span>
+            <div className="ambient-token-row">
+              <code className="ambient-token-value">{WEBHOOK_URL}</code>
+              <Button variant="ghost" size="sm" icon={<Copy size={13} />} onClick={() => void copyToken(WEBHOOK_URL)}>
+                Copy
+              </Button>
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   )
 }

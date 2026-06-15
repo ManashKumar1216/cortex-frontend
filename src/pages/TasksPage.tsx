@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
 
+import { Check, Plus, X } from 'lucide-react'
+
 import { tasks } from '../api/hooks'
 import { Modal } from '../components/Modal'
 import { AreaSelect, ProjectSelect } from '../components/selects'
-import { EmptyState, Field, PageHeader } from '../components/ui'
+import { Button, EmptyState, Field, IconButton, Input, PageHeader, SkeletonText, useConfirm } from '../components/ui'
 import { QUADRANT_META, formatDate } from '../lib/format'
 import type { Quadrant } from '../lib/types'
 
@@ -15,6 +17,7 @@ export function TasksPage() {
   const create = tasks.useCreate()
   const update = tasks.useUpdate()
   const remove = tasks.useRemove()
+  const confirm = useConfirm()
   const [open, setOpen] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
 
@@ -36,9 +39,9 @@ export function TasksPage() {
               />
               show completed
             </label>
-            <button className="btn primary" onClick={() => setOpen(true)}>
-              + Task
-            </button>
+            <Button variant="primary" icon={<Plus size={14} />} onClick={() => setOpen(true)}>
+              Task
+            </Button>
           </div>
         }
       />
@@ -46,7 +49,7 @@ export function TasksPage() {
         <span className="muted small">Area</span>
         <AreaSelect value={areaFilter} onChange={setAreaFilter} emptyLabel="All areas" />
       </div>
-      {isPending && <p className="muted">Loading…</p>}
+      {isPending && <SkeletonText lines={4} />}
       {isError && <p className="error">{(error as Error).message}</p>}
       {data?.length === 0 && <EmptyState message="No tasks yet. Add your first." />}
 
@@ -68,17 +71,18 @@ export function TasksPage() {
                 />
                 <div className="task-body">
                   <span className="task-title">{task.title}</span>
-                  {task.dueDate && <span className="muted small">due {formatDate(task.dueDate)}</span>}
+                  {task.dueDate && <span className="muted small mono">due {formatDate(task.dueDate)}</span>}
                 </div>
-                <button
-                  className="icon-btn"
-                  onClick={() => {
-                    if (confirm('Delete task?')) remove.mutate(task.id)
+                <IconButton
+                  label="Delete task"
+                  danger
+                  onClick={async () => {
+                    if (await confirm({ title: 'Delete task', message: `Delete "${task.title}"?`, danger: true, confirmLabel: 'Delete' }))
+                      remove.mutate(task.id)
                   }}
-                  aria-label="Delete"
                 >
-                  ✕
-                </button>
+                  <X size={14} />
+                </IconButton>
               </div>
             ))}
           </div>
@@ -89,6 +93,7 @@ export function TasksPage() {
         <TaskModal
           onClose={() => setOpen(false)}
           onSubmit={(body) => create.mutate(body, { onSuccess: () => setOpen(false) })}
+          pending={create.isPending}
         />
       )}
     </div>
@@ -98,9 +103,11 @@ export function TasksPage() {
 function TaskModal({
   onClose,
   onSubmit,
+  pending,
 }: {
   onClose: () => void
   onSubmit: (body: Record<string, unknown>) => void
+  pending: boolean
 }) {
   const [title, setTitle] = useState('')
   const [urgent, setUrgent] = useState(false)
@@ -121,10 +128,23 @@ function TaskModal({
   }
 
   return (
-    <Modal title="New task" onClose={onClose}>
+    <Modal
+      title="New task"
+      onClose={onClose}
+      actions={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" loading={pending} icon={<Check size={14} />} onClick={submit}>
+            Save
+          </Button>
+        </>
+      }
+    >
       <form className="form" onSubmit={submit}>
         <Field label="Title">
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
         </Field>
         <div className="row">
           <label className="row small">
@@ -132,11 +152,7 @@ function TaskModal({
             Urgent
           </label>
           <label className="row small">
-            <input
-              type="checkbox"
-              checked={important}
-              onChange={(e) => setImportant(e.target.checked)}
-            />
+            <input type="checkbox" checked={important} onChange={(e) => setImportant(e.target.checked)} />
             Important
           </label>
         </div>
@@ -144,21 +160,8 @@ function TaskModal({
           <ProjectSelect value={projectId} onChange={setProjectId} />
         </Field>
         <Field label="Due date">
-          <input
-            className="input"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
+          <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </Field>
-        <div className="form-actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn primary">
-            Save
-          </button>
-        </div>
       </form>
     </Modal>
   )
