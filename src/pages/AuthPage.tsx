@@ -4,7 +4,7 @@ import { Cpu, Lock, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { useAuth } from '../auth/AuthContext'
-import { BrandMark, Button, Field, Input, Tabs } from '../components/ui'
+import { BrandMark, Button, Field, Input, PasswordInput, Tabs } from '../components/ui'
 
 type Mode = 'login' | 'signup'
 
@@ -87,8 +87,7 @@ export function AuthPage() {
             />
           </Field>
           <Field label="Password">
-            <Input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={mode === 'signup' ? 'At least 8 characters' : 'Your password'}

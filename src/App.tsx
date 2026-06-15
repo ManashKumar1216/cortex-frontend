@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 
 import { ChevronRight, LogOut, Menu, Search, Settings as SettingsIcon } from 'lucide-react'
 import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useNewsSummary } from './api/news'
 import { useDueReminders } from './api/reminders'
+import { useSettings } from './api/settings'
 import { useAuth } from './auth/AuthContext'
+import { setTimeFormatPref } from './lib/time'
 import { CommandPalette } from './components/CommandPalette'
 import { NotificationsBell } from './components/NotificationsBell'
 import { PublicLayout } from './components/public/PublicLayout'
 import { BrandMark, ConfirmProvider, DropdownMenu, ToastProvider } from './components/ui'
-import { HUBS, PRIMARY, hubForPath, navItemForPath } from './lib/nav'
+import { HUBS, PINNED, PRIMARY, hubForPath, navItemForPath } from './lib/nav'
 import { AuthPage } from './pages/AuthPage'
 import { AreaDetailPage } from './pages/AreaDetailPage'
 import { AreasPage } from './pages/AreasPage'
@@ -31,10 +33,15 @@ import { ProjectsPage } from './pages/ProjectsPage'
 import { PulsePage } from './pages/PulsePage'
 import { ReflectionPage } from './pages/ReflectionPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { SetupGuidePage } from './pages/SetupGuidePage'
 import { SkillsPage } from './pages/SkillsPage'
 import { TasksPage } from './pages/TasksPage'
 import { TodayPage } from './pages/TodayPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
+// Games pull in Phaser (~1MB) — lazy-load them into their own chunk.
+const GamesPage = lazy(() => import('./pages/GamesPage').then((m) => ({ default: m.GamesPage })))
+const GamePlayPage = lazy(() => import('./pages/GamePlayPage').then((m) => ({ default: m.GamePlayPage })))
+
 import { GuidePage } from './pages/public/GuidePage'
 import { HowItWorksPage } from './pages/public/HowItWorksPage'
 import { LandingPage } from './pages/public/LandingPage'
@@ -77,6 +84,8 @@ export function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="goals" element={<GoalsPage />} />
           <Route path="budget" element={<BudgetPage />} />
+          <Route path="games" element={<GamesPage />} />
+          <Route path="games/:slug" element={<GamePlayPage />} />
           <Route path="areas" element={<AreasPage />} />
           <Route path="areas/:id" element={<AreaDetailPage />} />
           <Route path="journal" element={<JournalPage />} />
@@ -85,6 +94,7 @@ export function App() {
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="memory" element={<MemoryPage />} />
           <Route path="skills" element={<SkillsPage />} />
+          <Route path="setup" element={<SetupGuidePage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
@@ -216,6 +226,18 @@ function AppShell() {
                 ))}
               </div>
             </nav>
+            <div className="nav-pinned">
+              {PINNED.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                >
+                  <item.icon size={17} strokeWidth={2} />
+                  <span className="nav-item-label">{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
             <div className="sidebar-footer">
               <span className="dot-live" /> Local · Private
             </div>
@@ -224,12 +246,25 @@ function AppShell() {
           <div className="main-wrap">
             <Topbar onMenu={() => setNavOpen(true)} />
             <main className="content">
-              <Outlet />
+              <Suspense fallback={<p className="muted">Loading…</p>}>
+                <Outlet />
+              </Suspense>
             </main>
           </div>
         </div>
         <CommandPalette />
+        <TimeFormatSync />
       </ConfirmProvider>
     </ToastProvider>
   )
+}
+
+/** Mirrors the saved TIME_FORMAT setting into the app-wide clock store. */
+function TimeFormatSync() {
+  const settings = useSettings()
+  const pref = settings.data?.values?.TIME_FORMAT
+  useEffect(() => {
+    setTimeFormatPref(typeof pref === 'string' ? pref : '24h')
+  }, [pref])
+  return null
 }

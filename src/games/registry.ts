@@ -1,0 +1,121 @@
+import type { GameDef } from './engine/types'
+
+/**
+ * The frontend games catalog — display metadata + a lazy import of each scene.
+ * Slugs MUST match the backend GAME_CATALOG (games.spec.ts) so scores line up,
+ * and each slug MUST have an entry in games/icons.tsx.
+ */
+export const GAMES: GameDef[] = [
+  {
+    slug: 'snake',
+    title: 'Snake',
+    blurb: 'Grow by eating, don’t bite your tail.',
+    controls: 'Arrow keys / WASD · swipe',
+    category: 'arcade',
+    higherIsBetter: true,
+    load: () => import('./scenes/snake'),
+  },
+  {
+    slug: 'tetris',
+    title: 'Tetris',
+    blurb: 'Rotate & drop blocks to clear lines.',
+    controls: '← → move · ↑ rotate · ↓ drop',
+    category: 'puzzle',
+    higherIsBetter: true,
+    load: () => import('./scenes/tetris'),
+  },
+  {
+    slug: 'minesweeper',
+    title: 'Minesweeper',
+    blurb: 'Clear the field without hitting a mine.',
+    controls: 'Click reveal · right-click flag',
+    category: 'puzzle',
+    higherIsBetter: false,
+    load: () => import('./scenes/minesweeper'),
+  },
+  {
+    slug: 'asteroids',
+    title: 'Asteroids',
+    blurb: 'Thrust, rotate and blast the rocks.',
+    controls: '← → rotate · ↑ thrust · space fire',
+    category: 'shooter',
+    higherIsBetter: true,
+    load: () => import('./scenes/asteroids'),
+  },
+  {
+    slug: 'space-invaders',
+    title: 'Space Invaders',
+    blurb: 'Hold the line against the alien waves.',
+    controls: '← → move · space fire',
+    category: 'shooter',
+    higherIsBetter: true,
+    load: () => import('./scenes/space-invaders'),
+  },
+  {
+    slug: 'flappy',
+    title: 'Flappy',
+    blurb: 'Flap through the gaps between buildings.',
+    controls: 'Space / click / tap to flap',
+    category: 'arcade',
+    higherIsBetter: true,
+    load: () => import('./scenes/flappy'),
+  },
+  {
+    slug: 'runner',
+    title: 'Runner',
+    blurb: 'Auto-run and jump the gaps & blocks.',
+    controls: 'Space / ↑ / tap to jump',
+    category: 'runner',
+    higherIsBetter: true,
+    load: () => import('./scenes/runner'),
+  },
+  {
+    slug: 'hill-climb',
+    title: 'Hill Climb',
+    blurb: 'Drive the hills without flipping or stalling.',
+    controls: '→ gas · ← brake/reverse',
+    category: 'runner',
+    higherIsBetter: true,
+    load: () => import('./scenes/hill-climb'),
+  },
+  {
+    slug: 'pacman',
+    title: 'Pac-Man',
+    blurb: 'Eat the dots, dodge (or chomp) the ghosts.',
+    controls: 'Arrow keys / WASD',
+    category: 'arcade',
+    higherIsBetter: true,
+    load: () => import('./scenes/pacman'),
+  },
+  {
+    slug: 'frogger',
+    title: 'Frogger',
+    blurb: 'Cross the traffic and the river — don’t get squashed.',
+    controls: 'Arrow keys / WASD · swipe',
+    category: 'arcade',
+    higherIsBetter: true,
+    load: () => import('./scenes/frogger'),
+  },
+  {
+    slug: 'doodle-jump',
+    title: 'Doodle Jump',
+    blurb: 'Bounce ever upward, platform to platform.',
+    controls: '← → steer · auto-jumps',
+    category: 'runner',
+    higherIsBetter: true,
+    load: () => import('./scenes/doodle-jump'),
+  },
+  {
+    slug: 'sudoku',
+    title: 'Sudoku',
+    blurb: 'Fill the grid — pick 4×4, 6×6 or 9×9.',
+    controls: 'Click a cell · type / tap a number',
+    category: 'puzzle',
+    higherIsBetter: false,
+    load: () => import('./scenes/sudoku'),
+  },
+]
+
+export const GAME_BY_SLUG: Record<string, GameDef> = Object.fromEntries(
+  GAMES.map((g) => [g.slug, g]),
+)

@@ -24,6 +24,7 @@ import {
 } from '../api/calendar'
 import { Modal } from '../components/Modal'
 import { PageHeader, useToast } from '../components/ui'
+import { formatTime, formatTimeRange, useTimeFormat, type TimeFormat } from '../lib/time'
 import type { CalendarEvent } from '../lib/types'
 
 const DAY_MS = 86_400_000
@@ -41,15 +42,9 @@ function weekStartOf(d: Date): Date {
 const ymd = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const dayLabel = (d: Date): string => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 
-function eventTime(e: CalendarEvent): string {
+function eventTime(e: CalendarEvent, fmt: TimeFormat): string {
   if (e.allDay) return 'All day'
-  const s = new Date(e.start)
-  const t = s.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  if (e.end) {
-    const en = new Date(e.end)
-    return `${t} – ${en.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`
-  }
-  return t
+  return e.end ? formatTimeRange(e.start, e.end, fmt) : formatTime(e.start, fmt)
 }
 
 export function CalendarPage() {
@@ -267,11 +262,12 @@ function EventRow({
   onDismiss: () => void
 }) {
   const suggested = event.status === 'suggested'
+  const timeFmt = useTimeFormat()
   return (
     <div className={`cal-event src-${event.source}${suggested ? ' suggested' : ''}`}>
       <button type="button" className="cal-event-main" onClick={onEdit} disabled={event.source !== 'local'}>
         <span className="cal-event-time">
-          <Clock size={11} /> {eventTime(event)}
+          <Clock size={11} /> {eventTime(event, timeFmt)}
         </span>
         <span className="cal-event-title">{event.title}</span>
         {event.location && (

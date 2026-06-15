@@ -6,8 +6,10 @@ import {
   Brain,
   CalendarDays,
   CheckSquare,
+  ClipboardCheck,
   Flame,
   FolderKanban,
+  Gamepad2,
   Inbox,
   LayoutDashboard,
   LayoutGrid,
@@ -18,6 +20,7 @@ import {
   Network,
   Newspaper,
   Radio,
+  Settings,
   Sparkles,
   Target,
   Telescope,
@@ -48,6 +51,7 @@ export const PRIMARY: NavItem[] = [
   { to: '/capture', label: 'Capture', icon: Inbox },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/budget', label: 'Budget', icon: Wallet },
+  { to: '/games', label: 'Games', icon: Gamepad2 },
 ]
 
 /** The long tail, collapsed into hubs. Each hub's surfaces show as sub-tabs. */
@@ -91,8 +95,18 @@ export const HUBS: Hub[] = [
 /** Pulse is reached via the topbar bell, not the sidebar — but stays in ⌘K. */
 export const PULSE_ITEM: NavItem = { to: '/pulse', label: 'Pulse', icon: Bell }
 
+/** Utility destinations pinned to the very bottom of the sidebar (above the footer). */
+export const SETUP_ITEM: NavItem = { to: '/setup', label: 'Setup guide', icon: ClipboardCheck }
+export const SETTINGS_ITEM: NavItem = { to: '/settings', label: 'Settings', icon: Settings }
+export const PINNED: NavItem[] = [SETUP_ITEM, SETTINGS_ITEM]
+
 /** Flat list for the command palette (every reachable surface). */
-export const NAV_ITEMS: NavItem[] = [...PRIMARY, ...HUBS.flatMap((h) => h.items), PULSE_ITEM]
+export const NAV_ITEMS: NavItem[] = [
+  ...PRIMARY,
+  ...HUBS.flatMap((h) => h.items),
+  ...PINNED,
+  PULSE_ITEM,
+]
 
 /** The hub that owns a path (for the sub-nav + breadcrumb), if any. */
 export function hubForPath(pathname: string): Hub | undefined {

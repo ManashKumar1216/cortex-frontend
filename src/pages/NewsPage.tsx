@@ -32,6 +32,7 @@ import {
 } from '../api/news'
 import { Modal } from '../components/Modal'
 import { PageHeader } from '../components/ui'
+import { formatDateTime, formatTime, useTimeFormat, type TimeFormat } from '../lib/time'
 import type { NewsItem, NewsSlot, NewsTab, NewsTopic } from '../lib/types'
 
 const TABS: { key: NewsTab; label: string; icon: typeof Newspaper }[] = [
@@ -54,15 +55,15 @@ const SOURCE_LABEL: Record<string, string> = {
   arxiv: 'arXiv',
 }
 
-function fmtTime(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+function fmtTime(iso: string | null, fmt: TimeFormat): string {
+  return iso ? formatTime(iso, fmt) : ''
 }
 
 export function NewsPage() {
   const [tab, setTab] = useState<NewsTab>('news')
   const [selected, setSelected] = useState<NewsItem | null>(null)
   const [manage, setManage] = useState(false)
+  const timeFmt = useTimeFormat()
   const sections = useNewsTab(tab)
   const summary = useNewsSummary()
   const refresh = useRefreshNews()
@@ -110,7 +111,7 @@ export function NewsPage() {
                 <meta.icon size={16} /> {meta.label}
               </h2>
               <span className="muted small">
-                {section.runAt ? `${fmtTime(section.runAt)} · ` : ''}
+                {section.runAt ? `${fmtTime(section.runAt, timeFmt)} · ` : ''}
                 {section.itemCount > 0 ? `${section.readCount}/${section.itemCount} read` : 'not yet'}
               </span>
             </div>
@@ -153,6 +154,7 @@ function NewsCard({ item, onOpen }: { item: NewsItem; onOpen: () => void }) {
 function NewsDetail({ item, onClose }: { item: NewsItem; onClose: () => void }) {
   const markRead = useMarkRead()
   const { mutate: doMarkRead } = markRead
+  const timeFmt = useTimeFormat()
 
   // Summary is normally precomputed (instant). If it's missing, lazy-load it on open.
   const hasPrecomputed = !!item.summary?.trim()
@@ -181,7 +183,7 @@ function NewsDetail({ item, onClose }: { item: NewsItem; onClose: () => void }) 
           <span className="news-card-topic">{item.topic}</span>
           <span className="muted small">
             {item.publisher}
-            {item.publishedAt ? ` · ${new Date(item.publishedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
+            {item.publishedAt ? ` · ${formatDateTime(item.publishedAt, timeFmt, { withYear: true })}` : ''}
           </span>
         </div>
         {author && <p className="news-detail-author">By {author}</p>}

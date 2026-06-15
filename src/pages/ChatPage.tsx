@@ -40,6 +40,7 @@ import { useDueReminders, useReminderActions } from '../api/reminders'
 import { Markdown } from '../components/Markdown'
 import { Modal } from '../components/Modal'
 import { Field } from '../components/ui'
+import { formatDateTime, useTimeFormat, type TimeFormat } from '../lib/time'
 import type { ApprovalDecision, ApprovalRequest, ChatSource, Reminder, Skill, ToolStep } from '../lib/types'
 
 const SOURCE_ICON: Record<string, LucideIcon> = {
@@ -128,10 +129,10 @@ const label = (k: string) => FIELD_LABEL[k] ?? k
 /** ISO 8601 with a time component (so date-only strings like "2026-06-14" are left alone). */
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 /** Render field values, showing ISO timestamps in the owner's local timezone. */
-function fieldValue(v: unknown): string {
+function fieldValue(v: unknown, fmt: TimeFormat): string {
   if (typeof v === 'string' && ISO_DATETIME.test(v)) {
-    const d = new Date(v)
-    if (!Number.isNaN(d.getTime())) return d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+    const formatted = formatDateTime(v, fmt, { withYear: true })
+    if (formatted) return formatted
   }
   return String(v)
 }
@@ -217,6 +218,7 @@ function ApprovalCard({
 }) {
   const p = req.preview
   const destructive = p.type === 'delete'
+  const timeFmt = useTimeFormat()
   return (
     <div className={`card approval-card${destructive ? ' approval-destructive' : ''}`}>
       <div className="suggestion-summary">{req.summary}</div>
@@ -224,7 +226,7 @@ function ApprovalCard({
         <ul className="approval-diff">
           {p.fields.map((f) => (
             <li key={f.key}>
-              <span className="muted">{label(f.key)}</span> <span className="mono">{fieldValue(f.value)}</span>
+              <span className="muted">{label(f.key)}</span> <span className="mono">{fieldValue(f.value, timeFmt)}</span>
             </li>
           ))}
         </ul>
@@ -235,8 +237,8 @@ function ApprovalCard({
           {p.changes.map((c) => (
             <li key={c.key}>
               <span className="muted">{label(c.key)}</span>{' '}
-              <span className="mono struck">{c.before == null ? '∅' : fieldValue(c.before)}</span> →{' '}
-              <span className="mono">{fieldValue(c.after)}</span>
+              <span className="mono struck">{c.before == null ? '∅' : fieldValue(c.before, timeFmt)}</span> →{' '}
+              <span className="mono">{fieldValue(c.after, timeFmt)}</span>
             </li>
           ))}
         </ul>
@@ -297,6 +299,7 @@ function DueDigest({
   onSnooze: (id: string) => void
   onPlan: () => void
 }) {
+  const timeFmt = useTimeFormat()
   if (!reminders.length) return null
   return (
     <div className="reminder-digest">
@@ -312,7 +315,7 @@ function DueDigest({
         {reminders.map((r) => (
           <div key={r.id} className="reminder-row">
             <span className="reminder-when mono">
-              {new Date(r.remindAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              {formatDateTime(r.remindAt, timeFmt)}
             </span>
             <span className="reminder-title">{r.title}</span>
             <button className="btn ghost sm" onClick={() => onComplete(r.id)}>

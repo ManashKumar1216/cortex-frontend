@@ -12,7 +12,7 @@ import {
   type TextareaHTMLAttributes,
 } from 'react'
 
-import { AlertTriangle, CheckCircle2, Info, Loader2, Sparkles, X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Info, Loader2, Sparkles, X } from 'lucide-react'
 
 import { Modal } from './Modal'
 import { SubNav } from './SubNav'
@@ -308,6 +308,34 @@ export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputEleme
 
 export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={`input ${className ?? ''}`.trim()} {...rest} />
+}
+
+/** Password field with a show/hide toggle. Drop-in replacement for <Input type="password">. */
+export function PasswordInput({
+  className,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [show, setShow] = useState(false)
+  return (
+    <span className="input-affix">
+      <input
+        className={`input has-affix ${className ?? ''}`.trim()}
+        type={show ? 'text' : 'password'}
+        {...rest}
+      />
+      <button
+        type="button"
+        className="input-affix-btn"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        aria-pressed={show}
+        title={show ? 'Hide password' : 'Show password'}
+        tabIndex={-1}
+      >
+        {show ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
+      </button>
+    </span>
+  )
 }
 
 /* ---------- Empty state ---------- */

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 
 import { Download, Save, Upload } from 'lucide-react'
 
@@ -17,6 +17,7 @@ type Draft = Record<string, string | number | boolean>
 
 /** Order groups deliberately; any unlisted group falls to the end alphabetically. */
 const GROUP_ORDER = [
+  'Display',
   'Model & Retrieval',
   'Proactivity',
   'Notifications',
@@ -35,6 +36,7 @@ export function SettingsPage() {
   // Local edits keyed by field; only changed fields are sent on save.
   const [draft, setDraft] = useState<Draft>({})
   const [secretDraft, setSecretDraft] = useState<Record<string, string>>({})
+  const [activeSection, setActiveSection] = useState('')
 
   const groups = useMemo(() => {
     const fields = meta.data ?? []
@@ -47,6 +49,61 @@ export function SettingsPage() {
       (a, b) => groupRank(a[0]) - groupRank(b[0]) || a[0].localeCompare(b[0]),
     )
   }, [meta.data])
+
+  // The right-rail jump list: one entry per group, plus the Data/backup section.
+  const railSections = useMemo(
+    () => [...groups.map(([g]) => ({ id: slugifyGroup(g), label: g })), { id: 'data', label: 'Data' }],
+    [groups],
+  )
+
+  // Deep links from the Setup guide (/settings#web-search) scroll to their group.
+  // Wait for BOTH queries — the groups only render once meta AND settings load —
+  // then scroll on the next frame so layout is settled.
+  useEffect(() => {
+    if (!meta.data || !settings.data) return
+    const hash = window.location.hash.slice(1)
+    if (!hash) return
+    const id = requestAnimationFrame(() =>
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    )
+    return () => cancelAnimationFrame(id)
+  }, [meta.data, settings.data])
+
+  // Scroll-spy: highlight the rail entry for the section nearest the viewport top.
+  useEffect(() => {
+    if (!meta.data || !settings.data) return
+    const els = railSections
+      .map((s) => document.getElementById(s.id))
+      .filter((el): el is HTMLElement => el !== null)
+    if (!els.length) return
+    if (!activeSection) setActiveSection(railSections[0]?.id ?? '')
+    // A callback only carries the sections whose visibility CHANGED, so keep a
+    // running set of which are visible. Positions are read FRESH at pick time —
+    // an entry's stored boundingClientRect goes stale once scrolling settles.
+    const visible = new Set<string>()
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id)
+          else visible.delete(e.target.id)
+        }
+        let best: string | null = null
+        let bestTop = Infinity
+        for (const id of visible) {
+          const top = document.getElementById(id)?.getBoundingClientRect().top
+          if (top != null && top < bestTop) {
+            bestTop = top
+            best = id
+          }
+        }
+        if (best) setActiveSection(best)
+      },
+      { rootMargin: '-80px 0px -55% 0px', threshold: 0 },
+    )
+    els.forEach((el) => obs.observe(el))
+    return () => obs.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta.data, settings.data, railSections])
 
   if (meta.isPending || settings.isPending) return <p className="muted">Loading…</p>
   if (meta.isError || settings.isError) return <p className="error">Failed to load settings.</p>
@@ -92,8 +149,10 @@ export function SettingsPage() {
         }
       />
 
+      <div className="settings-layout">
+        <div className="settings-main">
       {groups.map(([group, fields]) => (
-        <section key={group} className="card settings-group">
+        <section key={group} id={slugifyGroup(group)} className="card settings-group">
           <h2 className="settings-group-title">{group}</h2>
           <div className="settings-grid">
             {fields.map((f) => (
@@ -125,6 +184,25 @@ export function SettingsPage() {
         Secrets are stored encrypted on this machine and never shown again. Email & WhatsApp accounts
         are managed on their own pages.
       </p>
+        </div>
+
+        <nav className="settings-rail" aria-label="Settings sections">
+          <span className="settings-rail-title">On this page</span>
+          {railSections.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={activeSection === s.id ? 'active' : ''}
+              onClick={() => {
+                document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                setActiveSection(s.id)
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+      </div>
     </div>
   )
 }
@@ -171,7 +249,7 @@ function BackupSection() {
   }
 
   return (
-    <section className="card settings-group">
+    <section id="data" className="card settings-group">
       <h2 className="settings-group-title">Data</h2>
       <p className="muted small" style={{ marginTop: '-6px', marginBottom: '12px' }}>
         Export a JSON snapshot of your areas, goals, projects, tasks, habits, journal, notes, reminders,
@@ -193,6 +271,14 @@ function BackupSection() {
 function groupRank(group: string): number {
   const i = GROUP_ORDER.indexOf(group)
   return i === -1 ? GROUP_ORDER.length : i
+}
+
+/** "Model & Retrieval" → "model-retrieval" — the #anchor the Setup guide links to. */
+function slugifyGroup(group: string): string {
+  return group
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 function FieldControl({

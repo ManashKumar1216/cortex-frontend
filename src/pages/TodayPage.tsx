@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Check,
   CheckSquare,
+  ClipboardCheck,
   Flame,
   FolderKanban,
   ListChecks,
@@ -17,6 +18,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { useBudgetSummary } from '../api/budget'
 import {
@@ -30,10 +32,12 @@ import {
 } from '../api/calendar'
 import { tasks, useToday, useToggleHabit } from '../api/hooks'
 import { useDailyPrompt, useMorningBriefing, useRefreshBriefing } from '../api/reflection'
+import { useSetupStatus } from '../api/setup'
 import { Markdown } from '../components/Markdown'
 import { Modal } from '../components/Modal'
 import { Badge, Button, Card, Field, IconButton, Input, PageHeader, Stat } from '../components/ui'
 import { formatDate, formatDay, formatMoney } from '../lib/format'
+import { formatTime, useNow, useTimeFormat, type TimeFormat } from '../lib/time'
 import type { CalendarEvent } from '../lib/types'
 
 export function TodayPage() {
@@ -44,6 +48,8 @@ export function TodayPage() {
   const prompt = useDailyPrompt()
   const refreshBriefing = useRefreshBriefing()
   const budget = useBudgetSummary()
+  const timeFmt = useTimeFormat()
+  const now = useNow()
 
   if (isPending) return <p className="muted">Loading…</p>
   if (isError) return <p className="error">{(error as Error).message}</p>
@@ -53,7 +59,9 @@ export function TodayPage() {
 
   return (
     <div>
-      <PageHeader title="Today" subtitle={formatDay(data.date)} />
+      <PageHeader title="Today" subtitle={`${formatDay(data.date)} · ${formatTime(now, timeFmt)}`} />
+
+      <SetupBanner />
 
       {/* Morning briefing — verdict-first intelligence */}
       <Card
@@ -178,18 +186,56 @@ export function TodayPage() {
   )
 }
 
-function fmtEventWhen(e: CalendarEvent): string {
+const SETUP_BANNER_KEY = 'cortex.setupBannerDismissed'
+
+/** Shown until the required setup items are complete; dismissible per device. */
+function SetupBanner() {
+  const { data } = useSetupStatus()
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem(SETUP_BANNER_KEY) === '1',
+  )
+
+  if (!data || dismissed) return null
+  if (data.essentialsTotal === 0 || data.essentialsDone >= data.essentialsTotal) return null
+
+  return (
+    <div className="setup-banner">
+      <ClipboardCheck size={18} className="setup-banner-ic" />
+      <div className="setup-banner-body">
+        <strong>Finish setting up Cortex</strong>
+        <span className="muted small">
+          {data.essentialsDone}/{data.essentialsTotal} essentials done — add a local model so Cortex can think.
+        </span>
+      </div>
+      <Link className="btn primary sm" to="/setup">
+        Open setup guide
+      </Link>
+      <button
+        className="setup-banner-x"
+        aria-label="Dismiss"
+        onClick={() => {
+          localStorage.setItem(SETUP_BANNER_KEY, '1')
+          setDismissed(true)
+        }}
+      >
+        <X size={15} />
+      </button>
+    </div>
+  )
+}
+
+function fmtEventWhen(e: CalendarEvent, fmt: TimeFormat): string {
   const s = new Date(e.start)
   const day = s.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
   if (e.allDay) return `${day} · all day`
-  const time = s.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  return `${day} · ${time}`
+  return `${day} · ${formatTime(s, fmt)}`
 }
 
 function CalendarSection({ events }: { events: CalendarEvent[] }) {
   const suggested = useCalendarSuggested()
   const confirm = useConfirmEvent()
   const dismiss = useDismissEvent()
+  const timeFmt = useTimeFormat()
   const [manage, setManage] = useState(false)
   const pending = (suggested.data ?? []).filter((e) => e.status === 'suggested')
 
@@ -214,7 +260,7 @@ function CalendarSection({ events }: { events: CalendarEvent[] }) {
         <div className="cal-events">
           {events.map((e) => (
             <div key={e.id} className="cal-event">
-              <span className="cal-when mono">{fmtEventWhen(e)}</span>
+              <span className="cal-when mono">{fmtEventWhen(e, timeFmt)}</span>
               <span className="cal-title">{e.title}</span>
               {e.location && <span className="muted small">· {e.location}</span>}
             </div>
@@ -229,7 +275,7 @@ function CalendarSection({ events }: { events: CalendarEvent[] }) {
           </span>
           {pending.map((e) => (
             <div key={e.id} className="cal-event cal-event-suggested">
-              <span className="cal-when mono">{fmtEventWhen(e)}</span>
+              <span className="cal-when mono">{fmtEventWhen(e, timeFmt)}</span>
               <span className="cal-title">{e.title}</span>
               <span className="cal-event-actions">
                 <Button variant="ghost" size="sm" disabled={confirm.isPending} onClick={() => confirm.mutate(e.id)} icon={<Check size={13} />}>
