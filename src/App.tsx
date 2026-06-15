@@ -1,4 +1,6 @@
-import { ChevronRight, LogOut, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
+
+import { ChevronRight, LogOut, Menu, Search, Settings as SettingsIcon } from 'lucide-react'
 import { Link, NavLink, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useNewsSummary } from './api/news'
@@ -15,6 +17,7 @@ import { AreasPage } from './pages/AreasPage'
 import { AmbientPage } from './pages/AmbientPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
 import { BrainGraphPage } from './pages/BrainGraphPage'
+import { CalendarPage } from './pages/CalendarPage'
 import { CapturePage } from './pages/CapturePage'
 import { ChatPage } from './pages/ChatPage'
 import { EmailPage } from './pages/EmailPage'
@@ -27,6 +30,8 @@ import { BudgetPage } from './pages/BudgetPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { PulsePage } from './pages/PulsePage'
 import { ReflectionPage } from './pages/ReflectionPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { SkillsPage } from './pages/SkillsPage'
 import { TasksPage } from './pages/TasksPage'
 import { TodayPage } from './pages/TodayPage'
 import { WhatsAppPage } from './pages/WhatsAppPage'
@@ -67,6 +72,7 @@ export function App() {
           <Route path="news" element={<NewsPage />} />
           <Route path="ambient" element={<AmbientPage />} />
           <Route path="tasks" element={<TasksPage />} />
+          <Route path="calendar" element={<CalendarPage />} />
           <Route path="habits" element={<HabitsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="goals" element={<GoalsPage />} />
@@ -78,6 +84,8 @@ export function App() {
           <Route path="graph" element={<BrainGraphPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="memory" element={<MemoryPage />} />
+          <Route path="skills" element={<SkillsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
 
@@ -99,13 +107,16 @@ function RequireAuth({ loading, authed }: { loading: boolean; authed: boolean })
   return <Outlet />
 }
 
-function Topbar() {
+function Topbar({ onMenu }: { onMenu: () => void }) {
   const location = useLocation()
   const { user, logout } = useAuth()
   const hub = hubForPath(location.pathname)
   const item = navItemForPath(location.pathname)
   return (
     <header className="topbar">
+      <button type="button" className="topbar-hamburger" aria-label="Open menu" onClick={onMenu}>
+        <Menu size={18} />
+      </button>
       <nav className="crumbs" aria-label="Breadcrumb">
         {hub && <span className="crumb-section">{hub.label}</span>}
         {hub && item && <ChevronRight size={13} className="crumb-sep" />}
@@ -138,6 +149,9 @@ function Topbar() {
             <span className="dropdown-name">{user?.name}</span>
             <span className="muted small">Local · Private</span>
           </div>
+          <Link className="dropdown-item" to="/settings">
+            <SettingsIcon size={15} /> Settings
+          </Link>
           <button className="dropdown-item" onClick={() => void logout()}>
             <LogOut size={15} /> Log out
           </button>
@@ -154,12 +168,16 @@ function AppShell() {
   const newsSummary = useNewsSummary()
   const newsUnread = newsSummary.data?.unreadTotal ?? 0
   const activeHub = hubForPath(location.pathname)?.id
+  // Mobile nav drawer — closes automatically whenever the route changes.
+  const [navOpen, setNavOpen] = useState(false)
+  useEffect(() => setNavOpen(false), [location.pathname])
 
   return (
     <ToastProvider>
       <ConfirmProvider>
         <div className="app">
-          <aside className="sidebar">
+          {navOpen && <div className="nav-overlay" onClick={() => setNavOpen(false)} />}
+          <aside className={`sidebar${navOpen ? ' open' : ''}`}>
             <Link to="/" className="brand" title="Cortex home">
               <BrandMark />
               <span>Cortex</span>
@@ -204,7 +222,7 @@ function AppShell() {
           </aside>
 
           <div className="main-wrap">
-            <Topbar />
+            <Topbar onMenu={() => setNavOpen(true)} />
             <main className="content">
               <Outlet />
             </main>

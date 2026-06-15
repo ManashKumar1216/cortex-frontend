@@ -29,3 +29,13 @@ createRoot(rootEl).render(
     </QueryClientProvider>
   </StrictMode>,
 )
+
+// Register the service worker for the installable PWA. PROD-only: a SW in dev
+// would cache Vite's module graph and fight HMR.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* SW is a progressive enhancement — ignore failures */
+    })
+  })
+}

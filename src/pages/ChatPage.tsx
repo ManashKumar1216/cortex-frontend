@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -15,9 +15,11 @@ import {
   Globe,
   LayoutGrid,
   Loader,
+  Paperclip,
   Sparkles,
   Target,
   Wrench,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -30,6 +32,7 @@ import {
   useLLMHealth,
   useMessages,
   useSkills,
+  type ChatAttachment,
   type StreamHandlers,
 } from '../api/chat'
 import { useMemoryStats, useReindexMemory, useSaveToMemory } from '../api/memory'
@@ -353,7 +356,9 @@ export function ChatPage() {
   const [editing, setEditing] = useState<ApprovalRequest | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [attachment, setAttachment] = useState<ChatAttachment | null>(null)
 
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const turnConvId = useRef<string | undefined>(undefined)
   const didWrite = useRef(false)
 
@@ -406,7 +411,7 @@ export function ChatPage() {
     },
   })
 
-  const startTurn = async (text: string, skillSlug?: string) => {
+  const startTurn = async (text: string, skillSlug?: string, att?: ChatAttachment | null) => {
     if (busy || pendingApproval) return
     let conversationId = activeId
     if (!conversationId) {
@@ -418,7 +423,8 @@ export function ChatPage() {
     didWrite.current = false
 
     setDraft('')
-    setPendingUser(text)
+    setAttachment(null)
+    setPendingUser(att ? `${text}  📎 ${att.name ?? att.kind}` : text)
     setStreamText('')
     setStreamSources([])
     setSteps([])
@@ -426,7 +432,7 @@ export function ChatPage() {
     setBusy(true)
     setError(null)
     try {
-      await streamMessage(conversationId, text, handlers(), skillSlug)
+      await streamMessage(conversationId, text, handlers(), skillSlug, att ?? undefined)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chat failed')
       finalizeTurn()
@@ -436,7 +442,32 @@ export function ChatPage() {
   const send = (e: FormEvent) => {
     e.preventDefault()
     const text = draft.trim()
-    if (text) void startTurn(text)
+    // Allow sending an attachment with no text (default to a "what's in this?" prompt).
+    if (!text && !attachment) return
+    void startTurn(text || (attachment ? "What's in this?" : ''), undefined, attachment)
+  }
+
+  const onPickFile = (e: ChangeEvent<HTMLInputElement>): void => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+    const isImg = file.type.startsWith('image/')
+    if (!isPdf && !isImg) {
+      setError('Only images and PDFs can be attached.')
+      return
+    }
+    if (file.size > 18 * 1024 * 1024) {
+      setError('Attachment is too large (max ~18MB).')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result)
+      const base64 = result.includes(',') ? result.slice(result.indexOf(',') + 1) : result
+      setAttachment({ kind: isPdf ? 'pdf' : 'image', data: base64, name: file.name })
+    }
+    reader.readAsDataURL(file)
   }
 
   // Command-mode handoff from Capture: navigate('/chat', { state: { run } }) →
@@ -641,7 +672,33 @@ export function ChatPage() {
           </div>
         )}
 
+        {attachment && (
+          <div className="chat-attachment-chip">
+            <Paperclip size={13} />
+            <span className="chat-attachment-name">{attachment.name ?? attachment.kind}</span>
+            <span className="muted small">({attachment.kind})</span>
+            <button type="button" className="icon-btn" title="Remove attachment" onClick={() => setAttachment(null)}>
+              <X size={13} />
+            </button>
+          </div>
+        )}
         <form className="chat-input" onSubmit={send}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            style={{ display: 'none' }}
+            onChange={onPickFile}
+          />
+          <button
+            type="button"
+            className="icon-btn chat-attach-btn"
+            title="Attach an image or PDF"
+            disabled={busy || !!pendingApproval}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Paperclip size={16} />
+          </button>
           <input
             className="input"
             value={draft}
@@ -650,7 +707,11 @@ export function ChatPage() {
             disabled={busy || !!pendingApproval}
             autoFocus
           />
-          <button className="btn primary" type="submit" disabled={busy || !!pendingApproval || !draft.trim()}>
+          <button
+            className="btn primary"
+            type="submit"
+            disabled={busy || !!pendingApproval || (!draft.trim() && !attachment)}
+          >
             {busy ? '…' : 'Send'}
           </button>
         </form>

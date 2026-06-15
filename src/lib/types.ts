@@ -153,7 +153,13 @@ export interface Reminder extends Timestamps {
   notes?: string
   remindAt: string
   status: 'pending' | 'done' | 'snoozed' | 'cancelled'
-  recurrence?: { kind: 'none' | 'daily' }
+  recurrence?: {
+    kind: 'none' | 'daily' | 'weekly' | 'monthly' | 'cron'
+    daysOfWeek?: number[]
+    dayOfMonth?: number
+    cronExpression?: string
+    timezone?: string
+  }
   firedAt?: string | null
 }
 
@@ -359,7 +365,7 @@ export interface CalendarSubscription extends Timestamps {
 }
 
 export interface CalendarEvent extends Timestamps {
-  source: 'ics' | 'email'
+  source: 'ics' | 'email' | 'local'
   status: 'confirmed' | 'suggested' | 'dismissed'
   subscriptionId?: string
   title: string

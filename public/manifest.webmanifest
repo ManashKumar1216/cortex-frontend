@@ -1,0 +1,14 @@
+{
+  "name": "Cortex",
+  "short_name": "Cortex",
+  "description": "Your private, local AI second brain.",
+  "start_url": "/today",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#08090b",
+  "theme_color": "#08090b",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

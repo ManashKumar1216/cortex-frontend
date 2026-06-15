@@ -4,6 +4,7 @@ import {
   Bell,
   BookOpen,
   Brain,
+  CalendarDays,
   CheckSquare,
   Flame,
   FolderKanban,
@@ -21,6 +22,7 @@ import {
   Target,
   Telescope,
   Wallet,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -42,6 +44,7 @@ export const PRIMARY: NavItem[] = [
   { to: '/today', label: 'Today', icon: LayoutDashboard },
   { to: '/news', label: 'News', icon: Newspaper },
   { to: '/chat', label: 'Chat', icon: MessageSquare },
+  { to: '/skills', label: 'Skills', icon: Wand2 },
   { to: '/capture', label: 'Capture', icon: Inbox },
   { to: '/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/budget', label: 'Budget', icon: Wallet },
@@ -55,6 +58,7 @@ export const HUBS: Hub[] = [
     icon: ListChecks,
     items: [
       { to: '/tasks', label: 'Tasks', icon: CheckSquare },
+      { to: '/calendar', label: 'Calendar', icon: CalendarDays },
       { to: '/habits', label: 'Habits', icon: Flame },
       { to: '/projects', label: 'Projects', icon: FolderKanban },
       { to: '/goals', label: 'Goals', icon: Target },

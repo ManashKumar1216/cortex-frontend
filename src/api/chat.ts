@@ -111,17 +111,25 @@ async function consumeStream(res: Response, handlers: StreamHandlers): Promise<v
   }
 }
 
+export interface ChatAttachment {
+  kind: 'image' | 'pdf'
+  /** base64, no data: prefix */
+  data: string
+  name?: string
+}
+
 /** POST a message and stream the assistant reply / agent turn (NDJSON). */
 export async function streamMessage(
   conversationId: string,
   content: string,
   handlers: StreamHandlers,
   skillSlug?: string,
+  attachment?: ChatAttachment,
 ): Promise<void> {
   const res = await fetch(`${BASE_URL}/api/chat/conversations/${conversationId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ content, skillSlug }),
+    body: JSON.stringify({ content, skillSlug, attachment }),
     credentials: 'include', // send the httpOnly session cookie (cross-origin stream)
     signal: handlers.signal,
   })

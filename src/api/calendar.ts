@@ -31,6 +31,52 @@ export function useCalendarSuggested() {
   })
 }
 
+/** Events in a date range (confirmed by default; includeSuggested for the inbox). */
+export function useCalendarEvents(from: string, to: string, includeSuggested = false) {
+  return useQuery({
+    queryKey: ['calendar', 'events', from, to, includeSuggested],
+    queryFn: () =>
+      api.get<CalendarEvent[]>(
+        `/calendar/events?from=${from}&to=${to}${includeSuggested ? '&includeSuggested=true' : ''}`,
+      ),
+  })
+}
+
+export interface LocalEventInput {
+  title: string
+  start: string
+  end?: string
+  allDay?: boolean
+  location?: string
+  description?: string
+  url?: string
+}
+
+export function useCreateLocalEvent() {
+  const invalidate = useCalInvalidate()
+  return useMutation({
+    mutationFn: (body: LocalEventInput) => api.post<CalendarEvent>('/calendar/events', body),
+    onSuccess: invalidate,
+  })
+}
+
+export function useUpdateLocalEvent() {
+  const invalidate = useCalInvalidate()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<LocalEventInput> }) =>
+      api.patch<CalendarEvent>(`/calendar/events/${id}`, body),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteLocalEvent() {
+  const invalidate = useCalInvalidate()
+  return useMutation({
+    mutationFn: (id: string) => api.del(`/calendar/events/${id}`),
+    onSuccess: invalidate,
+  })
+}
+
 function useCalInvalidate() {
   const qc = useQueryClient()
   return () => {
