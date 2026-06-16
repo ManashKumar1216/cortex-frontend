@@ -3,9 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   ConsolidationResult,
   DailyRollup,
+  GapGraphPayload,
   MemoryStats,
   Note,
   ReindexResult,
+  RelatedItem,
   RollupResult,
 } from '../lib/types'
 import { api } from './client'
@@ -38,6 +40,20 @@ export function useReindexMemory() {
 
 /** Notes / memories CRUD. */
 export const notes = createEntityHooks<Note>('notes')
+
+/**
+ * Heads-Up resurfacing: older-but-relevant memories for the text being typed/read.
+ * Caller passes the (already-debounced) text; query is disabled below 12 chars.
+ */
+export function useRelatedMemories(text: string, excludeType?: string, excludeId?: string) {
+  const q = text.trim()
+  return useQuery({
+    queryKey: ['memory', 'related', q, excludeType ?? '', excludeId ?? ''],
+    queryFn: () => api.post<RelatedItem[]>('/memory/related', { text: q, excludeType, excludeId }),
+    enabled: q.length >= 12,
+    staleTime: 60_000,
+  })
+}
 
 /** Save arbitrary text (e.g. a chat reply) as a manual memory. */
 export function useSaveToMemory() {
@@ -76,6 +92,27 @@ export function useConsolidateMemory() {
   return useMutation({
     mutationFn: () => api.post<ConsolidationResult>('/memory/consolidate', {}),
     onSuccess: invalidate,
+  })
+}
+
+/** Run the knowledge-gap radar now (surfaces unlinked-but-related topics via Pulse). */
+export function useScanKnowledgeGaps() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ nodes: number; clusters: number; gaps: number }>('/memory/knowledge-gaps/run', {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['pulse'] })
+      void qc.invalidateQueries({ queryKey: ['knowledge-gaps'] })
+    },
+  })
+}
+
+/** Read-only radar view for the Gaps tab: topic clusters + near-but-disconnected bridges. */
+export function useKnowledgeGapGraph() {
+  return useQuery({
+    queryKey: ['knowledge-gaps', 'graph'],
+    queryFn: () => api.get<GapGraphPayload>('/memory/knowledge-gaps/graph'),
   })
 }
 

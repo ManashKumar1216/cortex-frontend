@@ -1282,6 +1282,229 @@ textarea.input {
   flex-shrink: 0;
   color: var(--accent);
 }
+/* Cross-capture citations carry when the capture was recorded. */
+.src-chip-time {
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+/* "Draft from notes" assist beneath writing surfaces (notes, journal, …) */
+.draft-assist {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.draft-assist-hint {
+  font-style: italic;
+}
+
+/* Inferred preference card panel ("How Cortex talks to you") */
+.pref-card-panel {
+  margin-top: 0;
+  margin-bottom: var(--sp-3);
+  border-top: none;
+  padding-top: 0;
+}
+.pref-card-body {
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+}
+.pref-card-content {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* Per-note "Suggested links" panel (link suggester) */
+.note-links {
+  margin-top: 8px;
+}
+.note-links-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 2px 0;
+}
+.note-links-toggle:hover {
+  color: var(--text);
+}
+.note-links-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  padding-left: 4px;
+  border-left: 2px solid var(--border);
+}
+.note-link-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.note-link-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Brain dump → structured plan review */
+.braindump-done {
+  margin: 0 0 var(--sp-3);
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+.braindump-review {
+  margin-top: var(--sp-4);
+}
+.braindump-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+.braindump-row.excluded {
+  opacity: 0.5;
+}
+.braindump-fields {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.braindump-row-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.braindump-row-top .input {
+  flex: 1;
+}
+.braindump-type {
+  max-width: 130px;
+}
+.braindump-row-when {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.braindump-notes {
+  margin: 0;
+}
+
+/* Heads-Up resurfacing rail ("you also noted…") */
+.heads-up-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+.heads-up-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.heads-up-toggle svg {
+  color: var(--accent);
+}
+.heads-up-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.heads-up-item {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  max-width: 260px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color var(--ease), background var(--ease);
+}
+.heads-up-item:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-elev);
+}
+.heads-up-item-title {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.heads-up-item-snippet {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Active toggle (e.g. Draft mode) on a chat composer icon button */
+.chat-attach-btn.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+
+/* Automations — last-run output preview */
+.automation-output {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow: auto;
+}
+
+/* Today "Open loops" rows */
+.open-loop-row {
+  gap: 8px;
+}
+.open-loop-title {
+  flex: 1;
+}
+
+/* Today "Up next" pre-event briefs */
+.brief-item + .brief-item {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.brief-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
 
 /* Memory bar (chat sidebar footer) */
 .memory-bar {
@@ -2394,6 +2617,19 @@ textarea.input {
   stroke: var(--accent);
   opacity: 0.9;
 }
+/* Owner-curated semantic links (accepted suggestions) — dashed to set them apart. */
+.graph-edge.edge-link {
+  stroke: var(--accent);
+  stroke-dasharray: 4 3;
+  opacity: 0.7;
+}
+/* Knowledge-gap bridges — the headline of the Gaps view: dashed, accent, prominent. */
+.graph-edge.edge-bridge {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  opacity: 0.85;
+}
 .graph-node {
   cursor: pointer;
 }
@@ -2404,17 +2640,79 @@ textarea.input {
   opacity: 0.4;
 }
 .graph-dot {
+  /* A thin ring in the canvas colour separates adjacent/overlapping nodes. */
+  stroke: var(--bg-elev);
+  stroke-width: 1.5;
   transition: r var(--dur-2) var(--ease);
 }
 .graph-label {
-  fill: var(--muted);
-  font-size: 9px;
+  fill: var(--text);
+  font-size: 11px;
   pointer-events: none;
   user-select: none;
+  /* Halo so labels stay legible over nodes and edges. */
+  paint-order: stroke;
+  stroke: var(--bg-elev);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 .graph-label.lane {
-  fill: var(--text);
   font-weight: 600;
+}
+
+/* ---- Knowledge-gap radar (Gaps tab) ---- */
+.gaps-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--sp-3);
+  align-items: start;
+}
+.gaps-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: calc(100vh - 240px);
+  overflow-y: auto;
+}
+.gaps-side .skill-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--sp-1);
+}
+.gap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+}
+.gap-card-clusters {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.gap-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.gap-question {
+  margin: 2px 0 0;
+  line-height: 1.45;
+  font-weight: 500;
+}
+.gap-unphrased {
+  margin: 2px 0 0;
+  font-style: italic;
+}
+@media (max-width: 900px) {
+  .gaps-layout {
+    grid-template-columns: 1fr;
+  }
+  .gaps-side {
+    max-height: none;
+  }
 }
 
 /* ---- Life Agents (Phase 13) ---- */
@@ -4928,6 +5226,126 @@ select.input {
 .btn.xs {
   padding: 3px 8px;
   font-size: 12px;
+}
+.skill-card-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.skill-badge.src-custom {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.skill-badge.src-off {
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+.skill-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.skill-builtin-note {
+  margin: 0 0 4px;
+  line-height: 1.45;
+}
+
+/* ---------- Tool picker (Skills) ---------- */
+.tool-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tool-picker-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tool-picker-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  color: var(--text-dim);
+}
+.tool-picker-search .input {
+  flex: 1;
+}
+.tool-picker-groups {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tool-picker-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin: 4px 4px 2px;
+}
+.tool-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.tool-row:hover {
+  background: var(--surface);
+}
+.tool-row.on {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.tool-row input[type='checkbox'] {
+  margin-top: 3px;
+}
+.tool-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.tool-row-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.tool-row-name {
+  font-size: 12.5px;
+}
+.tool-row-desc {
+  margin: 0;
+  line-height: 1.4;
+}
+.tool-tag {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.tool-tag.write {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+.tool-tag.net {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.tool-picker-foot {
+  margin: 0;
+  line-height: 1.4;
 }
 
 /* ---------- Chat attachments ---------- */

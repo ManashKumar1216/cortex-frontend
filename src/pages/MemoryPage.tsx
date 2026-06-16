@@ -2,12 +2,14 @@ import { useMemo, useState, type FormEvent } from 'react'
 
 import {
   BookMarked,
+  Check,
   ChevronDown,
   ChevronRight,
   ExternalLink,
   FileText,
   Library,
   Link2,
+  Network,
   Pencil,
   Pin,
   PinOff,
@@ -15,19 +17,34 @@ import {
   RotateCcw,
   Sparkles,
   Wand2,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 
+import {
+  usePreferenceCard,
+  useRegeneratePreferenceCard,
+  useUpdatePreferenceCard,
+} from '../api/chat'
 import { areas } from '../api/hooks'
+import {
+  useAcceptLink,
+  useDismissLink,
+  useNoteLinkSuggestions,
+  useSuggestLinks,
+} from '../api/links'
 import {
   notes,
   useConsolidateMemory,
   useGenerateRollup,
   useRestoreNote,
   useRollups,
+  useScanKnowledgeGaps,
   useSupersededNotes,
 } from '../api/memory'
 import { resources, useRefetchResource } from '../api/resources'
+import { DraftAssist } from '../components/DraftAssist'
+import { HeadsUpRail } from '../components/HeadsUpRail'
 import { Modal } from '../components/Modal'
 import { AreaSelect } from '../components/selects'
 import { EmptyState, Field, PageHeader, Tabs } from '../components/ui'
@@ -69,6 +86,7 @@ function NotesTab() {
   const update = notes.useUpdate()
   const remove = notes.useRemove()
   const consolidate = useConsolidateMemory()
+  const scanGaps = useScanKnowledgeGaps()
   const [open, setOpen] = useState(false)
   const [tidyNote, setTidyNote] = useState<string | null>(null)
 
@@ -86,6 +104,7 @@ function NotesTab() {
 
   return (
     <>
+      <PreferenceCardPanel />
       <div className="row-between section-bar">
         <span className="muted small">Facts &amp; preferences Cortex keeps about you</span>
         <div className="row" style={{ gap: 'var(--sp-2)' }}>
@@ -96,6 +115,25 @@ function NotesTab() {
             title="Find and retire duplicate or outdated memories (reversible)"
           >
             <Wand2 size={14} /> {consolidate.isPending ? 'Tidying…' : 'Tidy memory'}
+          </button>
+          <button
+            className="btn ghost sm"
+            onClick={() =>
+              scanGaps.mutate(undefined, {
+                onSuccess: (r) =>
+                  setTidyNote(
+                    r.gaps > 0
+                      ? `Found ${r.gaps} unexplored connection${r.gaps === 1 ? '' : 's'} — see Pulse.`
+                      : r.nodes < 40
+                        ? 'Not enough memories yet to find connections.'
+                        : 'No new connections to suggest right now.',
+                  ),
+              })
+            }
+            disabled={scanGaps.isPending}
+            title="Find topics that look related but aren't linked, and suggest a connection"
+          >
+            <Network size={14} /> {scanGaps.isPending ? 'Scanning…' : 'Find connections'}
           </button>
           <button className="btn primary sm" onClick={() => setOpen(true)}>
             + Note
@@ -119,6 +157,7 @@ function NotesTab() {
               <span className={`badge ${note.source === 'chat' ? 'info' : 'muted'}`}>
                 {note.source === 'chat' ? 'from chat' : 'note'}
               </span>
+              <NoteLinks noteId={note.id} />
             </div>
             <div className="note-actions">
               <button
@@ -152,6 +191,157 @@ function NotesTab() {
         />
       )}
     </>
+  )
+}
+
+/** Per-note "Suggested links" panel — accept (→ real graph edge) or dismiss. */
+function NoteLinks({ noteId }: { noteId: string }) {
+  const [open, setOpen] = useState(false)
+  const { data, isPending } = useNoteLinkSuggestions(noteId, open)
+  const suggest = useSuggestLinks()
+  const accept = useAcceptLink(noteId)
+  const dismiss = useDismissLink(noteId)
+  const count = data?.length ?? 0
+
+  return (
+    <div className="note-links">
+      <button className="note-links-toggle" onClick={() => setOpen((v) => !v)}>
+        <Link2 size={12} /> {open ? 'Hide links' : 'Suggested links'}
+        {count ? ` (${count})` : ''}
+      </button>
+      {open && (
+        <div className="note-links-body">
+          {isPending && <span className="muted small">Loading…</span>}
+          {data && data.length === 0 && (
+            <div className="row" style={{ gap: 'var(--sp-2)', alignItems: 'center' }}>
+              <span className="muted small">No suggestions yet.</span>
+              <button
+                className="btn ghost sm"
+                disabled={suggest.isPending}
+                onClick={() => suggest.mutate(noteId)}
+              >
+                <Sparkles size={12} className={suggest.isPending ? 'spin' : undefined} />{' '}
+                {suggest.isPending ? 'Finding…' : 'Find links'}
+              </button>
+            </div>
+          )}
+          {data?.map((l) => (
+            <div key={l.id} className="note-link-row">
+              <div className="note-link-info">
+                <span>
+                  <strong>{l.targetLabel || l.targetId}</strong>{' '}
+                  <span className="badge muted">{l.targetType}</span>
+                </span>
+                {l.rationale && <span className="muted small">{l.rationale}</span>}
+              </div>
+              <div className="note-actions">
+                <button
+                  className="icon-btn"
+                  title="Accept — create this link"
+                  aria-label="Accept link"
+                  onClick={() => accept.mutate(l.id)}
+                >
+                  <Check size={14} />
+                </button>
+                <button
+                  className="icon-btn"
+                  title="Dismiss"
+                  aria-label="Dismiss link"
+                  onClick={() => dismiss.mutate(l.id)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** The inferred "how to talk to me" card — view, regenerate, and hand-edit. */
+function PreferenceCardPanel() {
+  const { data, isPending } = usePreferenceCard()
+  const regen = useRegeneratePreferenceCard()
+  const save = useUpdatePreferenceCard()
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+
+  if (isPending) return null
+  const content = data?.content?.trim() ?? ''
+  const has = content.length > 0
+
+  const startEdit = () => {
+    setDraft(content)
+    setEditing(true)
+  }
+  const onRegen = () => {
+    // If the card was hand-edited, confirm before the regenerate overwrites it.
+    const force = Boolean(data?.manual)
+    if (force && !confirm('Regenerate will replace your hand-edited card. Continue?')) return
+    regen.mutate(force)
+  }
+
+  return (
+    <div className="superseded-section pref-card-panel">
+      <button className="superseded-toggle" onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <Sparkles size={14} /> How Cortex talks to you
+        <span className="muted small">— a short style guide applied to every reply</span>
+      </button>
+      {open && (
+        <div className="pref-card-body card">
+          {editing ? (
+            <>
+              <textarea
+                className="input"
+                rows={6}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="- Keep replies concise…"
+                autoFocus
+              />
+              <div className="row" style={{ gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
+                <button
+                  className="btn primary sm"
+                  disabled={save.isPending}
+                  onClick={() => save.mutate(draft, { onSuccess: () => setEditing(false) })}
+                >
+                  Save
+                </button>
+                <button className="btn ghost sm" onClick={() => setEditing(false)}>
+                  Cancel
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {has ? (
+                <pre className="pref-card-content">{content}</pre>
+              ) : (
+                <p className="muted small">
+                  No card yet — Cortex builds this from how you chat and the answers you like. Generate one to start.
+                </p>
+              )}
+              <div className="row" style={{ gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
+                <button className="btn ghost sm" onClick={onRegen} disabled={regen.isPending}>
+                  <RefreshCw size={13} className={regen.isPending ? 'spin' : undefined} />{' '}
+                  {regen.isPending ? 'Generating…' : has ? 'Regenerate' : 'Generate'}
+                </button>
+                {has && (
+                  <button className="btn ghost sm" onClick={startEdit}>
+                    <Pencil size={13} /> Edit
+                  </button>
+                )}
+                {data?.manual && <span className="badge muted">hand-edited</span>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -625,7 +815,13 @@ function NoteModal({
             onChange={(e) => setContent(e.target.value)}
             autoFocus
           />
+          <DraftAssist
+            value={content}
+            label="Draft from notes"
+            onInsert={(text) => setContent((c) => (c.trim() ? `${c}\n\n${text}` : text))}
+          />
         </Field>
+        <HeadsUpRail text={content} />
         <Field label="Title (optional)">
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
         </Field>

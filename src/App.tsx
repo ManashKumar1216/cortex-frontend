@@ -18,11 +18,14 @@ import { AreaDetailPage } from './pages/AreaDetailPage'
 import { AreasPage } from './pages/AreasPage'
 import { AmbientPage } from './pages/AmbientPage'
 import { AnalyticsPage } from './pages/AnalyticsPage'
+import { AutomationsPage } from './pages/AutomationsPage'
+import { BrainDumpPage } from './pages/BrainDumpPage'
 import { BrainGraphPage } from './pages/BrainGraphPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { CapturePage } from './pages/CapturePage'
 import { ChatPage } from './pages/ChatPage'
 import { EmailPage } from './pages/EmailPage'
+import { GapsPage } from './pages/GapsPage'
 import { GoalsPage } from './pages/GoalsPage'
 import { HabitsPage } from './pages/HabitsPage'
 import { JournalPage } from './pages/JournalPage'
@@ -88,9 +91,12 @@ export function App() {
           <Route path="games/:slug" element={<GamePlayPage />} />
           <Route path="areas" element={<AreasPage />} />
           <Route path="areas/:id" element={<AreaDetailPage />} />
+          <Route path="automations" element={<AutomationsPage />} />
+          <Route path="braindump" element={<BrainDumpPage />} />
           <Route path="journal" element={<JournalPage />} />
           <Route path="reflection" element={<ReflectionPage />} />
           <Route path="graph" element={<BrainGraphPage />} />
+          <Route path="gaps" element={<GapsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="memory" element={<MemoryPage />} />
           <Route path="skills" element={<SkillsPage />} />

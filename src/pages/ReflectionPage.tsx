@@ -8,6 +8,7 @@ import {
   Minus,
   PenLine,
   RefreshCw,
+  Search,
   Sparkles,
   TrendingDown,
   TrendingUp,
@@ -24,6 +25,7 @@ import {
   useJournalSuggestions,
   useMoodStats,
   useRefreshInsights,
+  useScanBottlenecks,
 } from '../api/reflection'
 import { MoodChart } from '../components/MoodChart'
 import { EmptyState, PageHeader } from '../components/ui'
@@ -36,6 +38,7 @@ const INSIGHT_CAT: Record<InsightCategory, { label: string; cls: string }> = {
   trend: { label: 'trend', cls: 'info' },
   spending: { label: 'spending', cls: 'warn' },
   consistency: { label: 'momentum', cls: 'ok' },
+  bottleneck: { label: 'bottleneck', cls: 'warn' },
 }
 
 const TREND_META: Record<MoodStats['trend'], { label: string; cls: string }> = {
@@ -52,6 +55,7 @@ export function ReflectionPage() {
   const suggestions = useJournalSuggestions()
   const insights = useInsights()
   const refreshInsights = useRefreshInsights()
+  const scanBottlenecks = useScanBottlenecks()
   const recent = journal.useList()
   const areaList = areas.useList()
   const navigate = useNavigate()
@@ -81,13 +85,23 @@ export function ReflectionPage() {
           <h2>
             <Lightbulb size={16} className="inline-ico" /> Insights
           </h2>
-          <button
-            className="btn ghost sm"
-            onClick={() => refreshInsights.mutate()}
-            disabled={refreshInsights.isPending}
-          >
-            <RefreshCw size={14} className={refreshInsights.isPending ? 'spin' : undefined} /> Refresh
-          </button>
+          <div className="row" style={{ gap: 6 }}>
+            <button
+              className="btn ghost sm"
+              onClick={() => scanBottlenecks.mutate()}
+              disabled={scanBottlenecks.isPending}
+              title="Scan projects, tasks, goals, budget and open loops for what's slowing you down"
+            >
+              <Search size={14} className={scanBottlenecks.isPending ? 'spin' : undefined} /> Bottlenecks
+            </button>
+            <button
+              className="btn ghost sm"
+              onClick={() => refreshInsights.mutate()}
+              disabled={refreshInsights.isPending}
+            >
+              <RefreshCw size={14} className={refreshInsights.isPending ? 'spin' : undefined} /> Refresh
+            </button>
+          </div>
         </div>
         {(insights.isPending || refreshInsights.isPending) && <p className="muted">Looking for patterns…</p>}
         {insights.data && insights.data.length === 0 && !refreshInsights.isPending && (

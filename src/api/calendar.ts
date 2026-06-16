@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { CalendarEvent, CalendarSubscription } from '../lib/types'
+import type { CalendarEvent, CalendarSubscription, EventBrief } from '../lib/types'
 import { api } from './client'
 
 interface CalendarStatus {
@@ -28,6 +28,15 @@ export function useCalendarSuggested() {
   return useQuery({
     queryKey: ['calendar', 'events', 'suggested'],
     queryFn: () => api.get<CalendarEvent[]>('/calendar/events?includeSuggested=true'),
+  })
+}
+
+/** Pre-event briefs for events starting soon (Today "Up next" card). */
+export function useUpcomingBriefs() {
+  return useQuery({
+    queryKey: ['calendar', 'briefs'],
+    queryFn: () => api.get<EventBrief[]>('/calendar/briefs'),
+    refetchInterval: 5 * 60_000,
   })
 }
 

@@ -15,9 +15,12 @@ import {
   Globe,
   LayoutGrid,
   Loader,
+  Mic,
   Paperclip,
+  PenLine,
   Sparkles,
   Target,
+  ThumbsUp,
   Wrench,
   X,
   type LucideIcon,
@@ -26,10 +29,13 @@ import {
 import {
   resumeApproval,
   streamMessage,
+  useAskCaptures,
   useConversations,
   useCreateConversation,
   useDeleteConversation,
+  useDraft,
   useLLMHealth,
+  useMessageFeedback,
   useMessages,
   useSkills,
   type ChatAttachment,
@@ -37,6 +43,7 @@ import {
 } from '../api/chat'
 import { useMemoryStats, useReindexMemory, useSaveToMemory } from '../api/memory'
 import { useDueReminders, useReminderActions } from '../api/reminders'
+import { HeadsUpRail } from '../components/HeadsUpRail'
 import { Markdown } from '../components/Markdown'
 import { Modal } from '../components/Modal'
 import { Field } from '../components/ui'
@@ -64,10 +71,15 @@ function SourceChips({ sources }: { sources: ChatSource[] }) {
           <span
             key={`${s.sourceType}:${s.sourceId}`}
             className="src-chip"
-            title={`${s.sourceType} · ${Math.round(s.score * 100)}% match`}
+            title={`${s.sourceType} · ${Math.round(s.score * 100)}% match${
+              s.timestamp ? ` · ${new Date(s.timestamp).toLocaleString()}` : ''
+            }`}
           >
             <Icon size={12} strokeWidth={2} />
             {s.title}
+            {s.timestamp && (
+              <span className="src-chip-time">{new Date(s.timestamp).toLocaleDateString()}</span>
+            )}
           </span>
         )
       })}
@@ -342,10 +354,16 @@ export function ChatPage() {
   const memoryStats = useMemoryStats()
   const reindex = useReindexMemory()
   const saveToMemory = useSaveToMemory()
+  const messageFeedback = useMessageFeedback()
+  const draftMut = useDraft()
+  const [draftMode, setDraftMode] = useState(false)
+  const captureMut = useAskCaptures()
+  const [captureMode, setCaptureMode] = useState(false)
   const skills = useSkills()
   const dueReminders = useDueReminders()
   const reminderActions = useReminderActions()
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+  const [exampleIds, setExampleIds] = useState<Set<string>>(new Set())
 
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const messages = useMessages(activeId)
@@ -442,9 +460,51 @@ export function ChatPage() {
     }
   }
 
+  const runDraft = async (topic: string) => {
+    if (busy) return
+    setDraft('')
+    setPendingUser(`✍️ Draft: ${topic}`)
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await draftMut.mutateAsync({ conversationId: activeId, topic })
+      if (!activeId) setActiveId(r.conversationId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Draft failed')
+    } finally {
+      setPendingUser(null)
+      setBusy(false)
+    }
+  }
+
+  const runCaptures = async (question: string) => {
+    if (busy) return
+    setDraft('')
+    setPendingUser(`🎙️ Captures: ${question}`)
+    setBusy(true)
+    setError(null)
+    try {
+      const r = await captureMut.mutateAsync({ conversationId: activeId, question })
+      if (!activeId) setActiveId(r.conversationId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Captures search failed')
+    } finally {
+      setPendingUser(null)
+      setBusy(false)
+    }
+  }
+
   const send = (e: FormEvent) => {
     e.preventDefault()
     const text = draft.trim()
+    if (captureMode) {
+      if (text) void runCaptures(text)
+      return
+    }
+    if (draftMode) {
+      if (text) void runDraft(text)
+      return
+    }
     // Allow sending an attachment with no text (default to a "what's in this?" prompt).
     if (!text && !attachment) return
     void startTurn(text || (attachment ? "What's in this?" : ''), undefined, attachment)
@@ -624,6 +684,27 @@ export function ChatPage() {
                       </>
                     )}
                   </button>
+                  <button
+                    className="msg-tool"
+                    disabled={exampleIds.has(m.id) || messageFeedback.isPending}
+                    title="Mark this as a good answer — Cortex will match its style next time"
+                    onClick={() =>
+                      messageFeedback.mutate(
+                        { id: m.id, rating: 'up', saveExample: true },
+                        { onSuccess: () => setExampleIds((prev) => new Set(prev).add(m.id)) },
+                      )
+                    }
+                  >
+                    {exampleIds.has(m.id) ? (
+                      <>
+                        <Check size={12} strokeWidth={2.5} /> Example saved
+                      </>
+                    ) : (
+                      <>
+                        <ThumbsUp size={12} /> Good answer
+                      </>
+                    )}
+                  </button>
                 </div>
               )}
             </Fragment>
@@ -685,6 +766,7 @@ export function ChatPage() {
             </button>
           </div>
         )}
+        {!pendingApproval && <HeadsUpRail text={draft} />}
         <form className="chat-input" onSubmit={send}>
           <input
             ref={fileInputRef}
@@ -702,20 +784,60 @@ export function ChatPage() {
           >
             <Paperclip size={16} />
           </button>
+          {health.data?.draftEnabled && (
+            <button
+              type="button"
+              className={`icon-btn chat-attach-btn${draftMode ? ' active' : ''}`}
+              title="Draft mode — write only from your own notes, with citations"
+              disabled={busy || !!pendingApproval}
+              onClick={() => {
+                setDraftMode((v) => !v)
+                setCaptureMode(false)
+              }}
+            >
+              <PenLine size={16} />
+            </button>
+          )}
+          {health.data?.crossCaptureEnabled && (
+            <button
+              type="button"
+              className={`icon-btn chat-attach-btn${captureMode ? ' active' : ''}`}
+              title="Ask your captures — answer only from ambient, email & chat captures, with timestamped citations"
+              disabled={busy || !!pendingApproval}
+              onClick={() => {
+                setCaptureMode((v) => !v)
+                setDraftMode(false)
+              }}
+            >
+              <Mic size={16} />
+            </button>
+          )}
           <input
             className="input"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder={pendingApproval ? 'Approve, edit, or cancel the change above…' : 'Message Cortex…'}
+            placeholder={
+              pendingApproval
+                ? 'Approve, edit, or cancel the change above…'
+                : captureMode
+                  ? 'Ask your captures (ambient, email, chat)…'
+                  : draftMode
+                    ? 'Describe what to draft from your notes…'
+                    : 'Message Cortex…'
+            }
             disabled={busy || !!pendingApproval}
             autoFocus
           />
           <button
             className="btn primary"
             type="submit"
-            disabled={busy || !!pendingApproval || (!draft.trim() && !attachment)}
+            disabled={
+              busy ||
+              !!pendingApproval ||
+              (draftMode || captureMode ? !draft.trim() : !draft.trim() && !attachment)
+            }
           >
-            {busy ? '…' : 'Send'}
+            {busy ? '…' : captureMode ? 'Ask' : draftMode ? 'Draft' : 'Send'}
           </button>
         </form>
       </div>

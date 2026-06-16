@@ -7,6 +7,7 @@ import type {
   Conversation,
   LLMHealth,
   Message,
+  PreferenceCard,
   Skill,
   ToolStep,
 } from '../lib/types'
@@ -42,6 +43,73 @@ export function useMessages(conversationId?: string) {
     queryKey: ['chat', 'messages', conversationId],
     queryFn: () => api.get<Message[]>(`/chat/conversations/${conversationId}/messages`),
     enabled: Boolean(conversationId),
+  })
+}
+
+/** Draft a piece grounded only in the owner's notes (persists into the conversation). */
+export function useDraft() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ conversationId, topic }: { conversationId?: string; topic: string }) =>
+      api.post<{ conversationId: string; messageId: string }>('/chat/draft', { conversationId, topic }),
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: ['chat', 'messages', r.conversationId] })
+      void qc.invalidateQueries({ queryKey: ['chat', 'conversations'] })
+    },
+  })
+}
+
+/** Ask a question answered ONLY from your captures (ambient/email/chat), with citations. */
+export function useAskCaptures() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ conversationId, question }: { conversationId?: string; question: string }) =>
+      api.post<{ conversationId: string; messageId: string }>('/chat/captures', { conversationId, question }),
+    onSuccess: (r) => {
+      void qc.invalidateQueries({ queryKey: ['chat', 'messages', r.conversationId] })
+      void qc.invalidateQueries({ queryKey: ['chat', 'conversations'] })
+    },
+  })
+}
+
+/** Inline draft: generate text from your notes WITHOUT persisting (for writing assists). */
+export function useDraftText() {
+  return useMutation({
+    mutationFn: (topic: string) =>
+      api.post<{ text: string; sources: ChatSource[] }>('/chat/draft/inline', { topic }),
+  })
+}
+
+// ── Inferred preference card ──
+export function usePreferenceCard() {
+  return useQuery({
+    queryKey: ['chat', 'preference-card'],
+    queryFn: () => api.get<PreferenceCard | null>('/chat/preference-card'),
+  })
+}
+
+export function useRegeneratePreferenceCard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (force?: boolean) =>
+      api.post<PreferenceCard | null>('/chat/preference-card/regenerate', { force: force ?? false }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['chat', 'preference-card'] }),
+  })
+}
+
+export function useUpdatePreferenceCard() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (content: string) => api.patch<PreferenceCard>('/chat/preference-card', { content }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['chat', 'preference-card'] }),
+  })
+}
+
+/** Mark an assistant reply good/bad; a liked reply is saved as a style example. */
+export function useMessageFeedback() {
+  return useMutation({
+    mutationFn: ({ id, rating, saveExample }: { id: string; rating?: 'up' | 'down'; saveExample?: boolean }) =>
+      api.post<{ ok: boolean; episode: boolean }>(`/chat/messages/${id}/feedback`, { rating, saveExample }),
   })
 }
 

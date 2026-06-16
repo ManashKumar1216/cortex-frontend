@@ -6,9 +6,9 @@ import { useNavigate } from 'react-router-dom'
 import { areas } from '../api/hooks'
 import { useGraph } from '../api/graph'
 import { AreaSelect } from '../components/selects'
-import { BrainGraph } from '../components/BrainGraph'
+import { BrainGraph, type VizNode } from '../components/BrainGraph'
 import { EmptyState, PageHeader } from '../components/ui'
-import type { GraphNode, GraphNodeType } from '../lib/types'
+import type { GraphNodeType } from '../lib/types'
 
 const TYPES: { type: GraphNodeType; label: string; r: number }[] = [
   { type: 'area', label: 'Areas', r: 7 },
@@ -19,6 +19,26 @@ const TYPES: { type: GraphNodeType; label: string; r: number }[] = [
   { type: 'journal', label: 'Journal', r: 4 },
   { type: 'note', label: 'Notes', r: 4 },
 ]
+
+// Render radius + fallback colour per node type (areas are the structural anchors).
+const TYPE_R: Record<GraphNodeType, number> = {
+  area: 12,
+  goal: 9,
+  project: 7,
+  habit: 6,
+  task: 5,
+  journal: 5,
+  note: 5,
+}
+const TYPE_COLOR: Record<GraphNodeType, string> = {
+  area: '#e8d6a8',
+  goal: '#d9b871',
+  project: '#8faec4',
+  habit: '#d98a7e',
+  task: '#7fb0a0',
+  journal: '#989aa2',
+  note: '#6a6c74',
+}
 
 export function BrainGraphPage() {
   const graph = useGraph()
@@ -63,10 +83,31 @@ export function BrainGraphPage() {
     return { nodes: visible, edges: visEdges }
   }, [graph.data, enabled, areaFamily, search])
 
+  // Map the typed graph nodes/edges to the renderer's generic shape.
+  const vizNodes = useMemo<VizNode[]>(
+    () =>
+      nodes.map((n) => ({
+        id: n.id,
+        label: n.label,
+        color: n.color ?? TYPE_COLOR[n.type],
+        r: TYPE_R[n.type],
+        big: n.type === 'area',
+        done: n.done,
+        route: n.route,
+      })),
+    [nodes],
+  )
+  const vizEdges = useMemo(
+    () => edges.map((e) => ({ source: e.source, target: e.target, kind: e.type === 'link' ? ('link' as const) : ('normal' as const) })),
+    [edges],
+  )
+
   const counts = graph.data?.counts
   const total = graph.data?.nodes.length ?? 0
   const toggle = (t: GraphNodeType): void => setEnabled((s) => ({ ...s, [t]: !s[t] }))
-  const onNodeClick = (n: GraphNode): void => void navigate(n.route)
+  const onNodeClick = (n: VizNode): void => {
+    if (n.route) navigate(n.route)
+  }
 
   return (
     <div className="graph-page">
@@ -121,7 +162,7 @@ export function BrainGraphPage() {
         <EmptyState message="No nodes match these filters." hint="Re-enable a type or clear the search/area filter." />
       )}
       {graph.data && nodes.length > 0 && (
-        <BrainGraph nodes={nodes} edges={edges} onNodeClick={onNodeClick} />
+        <BrainGraph nodes={vizNodes} edges={vizEdges} onNodeClick={onNodeClick} />
       )}
     </div>
   )

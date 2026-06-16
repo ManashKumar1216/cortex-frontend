@@ -88,6 +88,16 @@ export function useRefreshInsights() {
   })
 }
 
+/** Run the weekly bottleneck scout now (surfaces 'bottleneck' insights). */
+export function useScanBottlenecks() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api.post<{ found: number; kept: number; insights: Insight[] }>('/reflection/bottleneck/run', {}),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['reflection', 'insights'] }),
+  })
+}
+
 /** Keep (endorse → feeds RAG) or dismiss (suppress) an insight. */
 export function useInsightActions() {
   const qc = useQueryClient()

@@ -107,6 +107,8 @@ export interface ChatSource {
   title: string
   score: number
   url?: string
+  /** When the cited capture was recorded (cross-capture chat); ISO string. */
+  timestamp?: string
 }
 
 // ---- Agent (Phase 5) ----
@@ -305,6 +307,16 @@ export interface LLMHealth {
   error?: string
   agentEnabled?: boolean
   webSearch?: { enabled: boolean; provider: string; egress: boolean }
+  draftEnabled?: boolean
+  crossCaptureEnabled?: boolean
+}
+
+/** The owner's inferred "how to talk to me" preference card. */
+export interface PreferenceCard {
+  content: string
+  manual: boolean
+  sourceCount: number
+  generatedAt?: string
 }
 
 export interface MemoryStats {
@@ -328,6 +340,35 @@ export interface Note extends Timestamps {
   superseded?: boolean
   supersededAt?: string | null
   supersedeReason?: string
+}
+
+/** A brain-dump item proposed for review before it's written. */
+export type DumpItemType = 'task' | 'reminder' | 'event'
+export interface DumpItem {
+  type: DumpItemType
+  title: string
+  notes?: string
+  when?: string | null
+  allDay?: boolean
+}
+
+/** A suggested link from a note to a related note/entity (link suggester). */
+export interface LinkSuggestion {
+  id: string
+  targetType: string
+  targetId: string
+  targetLabel: string
+  rationale: string
+  score: number
+}
+
+/** A Heads-Up "you also noted" resurfacing hit (older-but-relevant memory). */
+export interface RelatedItem {
+  sourceType: string
+  sourceId: string
+  title: string
+  snippet: string
+  score: number
 }
 
 export interface ConsolidationResult {
@@ -386,6 +427,45 @@ export interface CalendarEvent extends Timestamps {
   description?: string
   url?: string
   confidence?: number
+}
+
+/** A saved automation: a user-authored scheduled "do this query and report back" job. */
+export interface Automation extends Timestamps {
+  name: string
+  prompt: string
+  recurrence?: {
+    kind: 'none' | 'daily' | 'weekly' | 'monthly' | 'cron'
+    daysOfWeek?: number[]
+    dayOfMonth?: number
+    cronExpression?: string
+    timezone?: string
+  }
+  nextRunAt: string
+  lastRunAt?: string | null
+  lastOutput?: string
+  lastStatus?: 'ok' | 'error'
+  deliver: ('push' | 'inbox')[]
+  webSearch: boolean
+  enabled: boolean
+}
+
+/** An open loop: a commitment, awaited item, or unanswered question tracked until resolved. */
+export interface TrackedItem extends Timestamps {
+  title: string
+  description?: string
+  kind: 'open_loop' | 'commitment' | 'question'
+  status: 'pending' | 'fulfilled' | 'abandoned'
+  dueDate?: string | null
+  sourceType?: string
+  fulfilledAt?: string | null
+}
+
+/** A pre-event prep brief generated shortly before a confirmed, timed event. */
+export interface EventBrief extends Timestamps {
+  eventId: string
+  title: string
+  body: string
+  eventStart: string
 }
 
 export interface DailyRollup extends Timestamps {
@@ -543,7 +623,13 @@ export interface JournalSuggestion extends Timestamps {
 }
 
 // ---- Insight engine (Phase 12) ----
-export type InsightCategory = 'correlation' | 'neglect' | 'trend' | 'spending' | 'consistency'
+export type InsightCategory =
+  | 'correlation'
+  | 'neglect'
+  | 'trend'
+  | 'spending'
+  | 'consistency'
+  | 'bottleneck'
 
 export interface Insight extends Timestamps {
   key: string
@@ -638,7 +724,7 @@ export interface GraphNode {
 export interface GraphEdge {
   source: string
   target: string
-  type: 'parent' | 'area' | 'goal' | 'project'
+  type: 'parent' | 'area' | 'goal' | 'project' | 'link'
 }
 
 export interface GraphPayload {
@@ -646,6 +732,39 @@ export interface GraphPayload {
   edges: GraphEdge[]
   counts: Record<GraphNodeType, number>
   truncated: boolean
+}
+
+// ---- Knowledge-gap radar ----
+export interface GapGraphNode {
+  id: string
+  type: string
+  title: string
+  cluster: number
+  /** Representative member of its cluster (anchors the label + bridge endpoints). */
+  rep: boolean
+}
+export interface GapGraphCluster {
+  id: number
+  size: number
+  titles: string[]
+}
+export interface GapBridge {
+  a: number
+  b: number
+  sim: number
+  titlesA: string[]
+  titlesB: string[]
+  /** Phrased bridging question, if the radar has already surfaced this gap. */
+  question?: string
+}
+export interface GapGraphPayload {
+  enabled: boolean
+  nodeCount: number
+  minNodes: number
+  simGate: number
+  nodes: GapGraphNode[]
+  clusters: GapGraphCluster[]
+  gaps: GapBridge[]
 }
 
 // ---- Budget (Phase 14) ----

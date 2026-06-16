@@ -13,6 +13,10 @@ export interface AgentSkill {
   source: 'builtin' | 'user' | 'learned'
   uses?: number
   enabled?: boolean
+  /** A code-defined builtin (editing forks a personal override). */
+  builtin?: boolean
+  /** A builtin whose content has been changed by an override (offer "Reset"). */
+  customized?: boolean
 }
 
 export interface SkillInput {
@@ -23,8 +27,21 @@ export interface SkillInput {
   iterationCap?: number
 }
 
+/** One agent tool, for the Skills tool picker. */
+export interface ToolMeta {
+  name: string
+  description: string
+  group: string
+  kind: 'read' | 'write'
+  networked?: boolean
+}
+
 export function useSkills() {
   return useQuery({ queryKey: ['skills'], queryFn: () => api.get<AgentSkill[]>('/skills') })
+}
+
+export function useToolCatalog() {
+  return useQuery({ queryKey: ['agent', 'tools'], queryFn: () => api.get<ToolMeta[]>('/agent/tools') })
 }
 
 function useSkillInvalidate() {

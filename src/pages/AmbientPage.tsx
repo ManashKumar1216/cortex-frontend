@@ -14,7 +14,7 @@ import {
 import { Markdown } from '../components/Markdown'
 import { Badge, Button, Card, EmptyState, PageHeader, useConfirm } from '../components/ui'
 import { formatDate } from '../lib/format'
-import { startRecording, type Recorder } from '../lib/recorder'
+import { openMicStream, startRecording, stopMicStream, type Recorder } from '../lib/recorder'
 
 const WEBHOOK_URL = `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000'}/api/ambient/ingest`
 const SEGMENT_MS = 30_000 // upload a transcript roughly every 30s of mic capture
@@ -22,25 +22,39 @@ const SEGMENT_MS = 30_000 // upload a transcript roughly every 30s of mic captur
 /**
  * Continuous browser-mic capture: records fixed segments and hands each finished
  * WAV to `onSegment`. Pressing stop ends the in-flight segment early so its final
- * audio is still captured. Only runs while the tab is open.
+ * audio is still captured.
+ *
+ * The mic stream is opened once and kept live for the whole session (segments
+ * reuse it instead of re-acquiring it each time). An actively-capturing tab is
+ * exempt from the browser's background freeze/throttle, so capture keeps running
+ * while Cortex sits in the background — no need to keep the tab focused. The
+ * MediaRecorder buffers audio on its own thread, so even if the segment timer is
+ * throttled while hidden, no audio is dropped (the segment is just longer).
  */
 function useAmbientMic(onSegment: (wav: Blob, capturedAt: Date) => void) {
   const [active, setActive] = useState(false)
   const activeRef = useRef(false)
+  const streamRef = useRef<MediaStream | null>(null)
   const recRef = useRef<Recorder | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const waitResolveRef = useRef<(() => void) | null>(null)
 
+  const releaseStream = useCallback(() => {
+    if (streamRef.current) {
+      stopMicStream(streamRef.current)
+      streamRef.current = null
+    }
+  }, [])
+
   const loop = useCallback(async () => {
     while (activeRef.current) {
+      const stream = streamRef.current
+      if (!stream) break
       let rec: Recorder
       try {
-        rec = await startRecording()
+        rec = await startRecording(stream) // reuses the live stream — no re-prompt
       } catch {
-        activeRef.current = false
-        setActive(false)
-        alert('Could not access the microphone.')
-        return
+        break
       }
       recRef.current = rec
       const startedAt = new Date()
@@ -58,10 +72,17 @@ function useAmbientMic(onSegment: (wav: Blob, capturedAt: Date) => void) {
         recRef.current = null
       }
     }
-  }, [onSegment])
+    releaseStream() // session ended → turn the mic fully off
+  }, [onSegment, releaseStream])
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     if (activeRef.current) return
+    try {
+      streamRef.current = await openMicStream()
+    } catch {
+      alert('Could not access the microphone.')
+      return
+    }
     activeRef.current = true
     setActive(true)
     void loop()
@@ -79,8 +100,9 @@ function useAmbientMic(onSegment: (wav: Blob, capturedAt: Date) => void) {
       activeRef.current = false
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
       recRef.current?.cancel()
+      releaseStream()
     },
-    [],
+    [releaseStream],
   )
 
   return { active, start, stop }
@@ -174,7 +196,10 @@ export function AmbientPage() {
             type="button"
             className={`record-orb${mic.active ? ' recording' : ''}`}
             disabled={!listening}
-            onClick={() => (mic.active ? mic.stop() : mic.start())}
+            onClick={() => {
+              if (mic.active) mic.stop()
+              else void mic.start()
+            }}
             title={listening ? 'Capture from this tab’s microphone' : 'Start listening first'}
             aria-label={mic.active ? 'Stop capturing' : 'Capture from microphone'}
           >
@@ -184,7 +209,7 @@ export function AmbientPage() {
             {!listening
               ? 'Turn on listening to capture from this tab.'
               : mic.active
-                ? 'Capturing from this tab’s mic… transcribes every ~30s. Keep the tab open.'
+                ? 'Capturing from this tab’s mic… transcribes every ~30s. Keeps running in the background as long as Cortex stays open in the browser.'
                 : 'Tap to capture from this tab’s mic (or stream from the mobile app via the ingest token).'}
           </p>
         </div>

@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Check, Plus, Trash2 } from 'lucide-react'
 
 import { journal } from '../api/hooks'
+import { DraftAssist } from '../components/DraftAssist'
 import { Modal } from '../components/Modal'
 import { AreaSelect } from '../components/selects'
 import { Badge, Button, Card, EmptyState, Field, IconButton, Input, PageHeader, SkeletonText, Textarea, useConfirm } from '../components/ui'
@@ -124,6 +125,10 @@ function JournalModal({
       <form className="form" onSubmit={submit}>
         <Field label="What happened?">
           <Textarea rows={5} value={content} onChange={(e) => setContent(e.target.value)} autoFocus />
+          <DraftAssist
+            value={content}
+            onInsert={(text) => setContent((c) => (c.trim() ? `${c}\n\n${text}` : text))}
+          />
         </Field>
         <Field label="Title (optional)">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} />

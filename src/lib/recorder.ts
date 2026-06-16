@@ -8,16 +8,38 @@ export interface Recorder {
   cancel: () => void
 }
 
-export async function startRecording(): Promise<Recorder> {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-  const mr = new MediaRecorder(stream)
+/** Open a microphone stream once and keep it live across many segments. */
+export async function openMicStream(): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({ audio: true })
+}
+
+/** Fully release a mic stream (stops the OS-level capture / recording indicator). */
+export function stopMicStream(stream: MediaStream): void {
+  stream.getTracks().forEach((t) => t.stop())
+}
+
+/**
+ * Record one segment. Pass a long-lived `stream` to keep the mic continuously
+ * open across segments — a tab that is actively capturing audio is exempt from
+ * background freezing/throttling, so recording keeps going while the tab is
+ * hidden. When no stream is given, a private one is acquired and released here
+ * (one-shot capture, e.g. the Capture page).
+ */
+export async function startRecording(stream?: MediaStream): Promise<Recorder> {
+  const ownsStream = !stream
+  const micStream = stream ?? (await navigator.mediaDevices.getUserMedia({ audio: true }))
+  const mr = new MediaRecorder(micStream)
   const chunks: BlobPart[] = []
   mr.ondataavailable = (e) => {
     if (e.data.size) chunks.push(e.data)
   }
   mr.start()
 
-  const cleanup = () => stream.getTracks().forEach((t) => t.stop())
+  // Only tear down the mic if we created the stream; a caller-owned stream stays
+  // live so the next segment reuses it (no re-prompt, no freeze-eligible gap).
+  const cleanup = () => {
+    if (ownsStream) micStream.getTracks().forEach((t) => t.stop())
+  }
 
   return {
     cancel() {

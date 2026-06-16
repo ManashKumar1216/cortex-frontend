@@ -6,9 +6,11 @@ import {
   Check,
   CheckSquare,
   ClipboardCheck,
+  Clock,
   Flame,
   FolderKanban,
   ListChecks,
+  ListPlus,
   Mail,
   Plus,
   RefreshCw,
@@ -29,9 +31,11 @@ import {
   useDismissEvent,
   useRemoveSubscription,
   useSyncSubscription,
+  useUpcomingBriefs,
 } from '../api/calendar'
 import { tasks, useToday, useToggleHabit } from '../api/hooks'
 import { useDailyPrompt, useMorningBriefing, useRefreshBriefing } from '../api/reflection'
+import { useOpenLoops, useTrackedItemActions } from '../api/trackedItems'
 import { useSetupStatus } from '../api/setup'
 import { Markdown } from '../components/Markdown'
 import { Modal } from '../components/Modal'
@@ -59,7 +63,15 @@ export function TodayPage() {
 
   return (
     <div>
-      <PageHeader title="Today" subtitle={`${formatDay(data.date)} · ${formatTime(now, timeFmt)}`} />
+      <PageHeader
+        title="Today"
+        subtitle={`${formatDay(data.date)} · ${formatTime(now, timeFmt)}`}
+        action={
+          <Link className="btn ghost sm" to="/braindump">
+            <ListPlus size={14} /> Brain dump
+          </Link>
+        }
+      />
 
       <SetupBanner />
 
@@ -101,6 +113,10 @@ export function TodayPage() {
           </div>
         )}
       </Card>
+
+      <UpNextBriefs />
+
+      <OpenLoopsCard />
 
       <div className="summary-band">
         <Stat icon={<CheckSquare size={15} />} value={t.incompleteTotal} label="To do" hint={`${t.completedToday} done today`} />
@@ -221,6 +237,51 @@ function SetupBanner() {
         <X size={15} />
       </button>
     </div>
+  )
+}
+
+/** Open loops — commitments / unanswered threads to close or drop. Hidden when none. */
+function OpenLoopsCard() {
+  const loops = useOpenLoops()
+  const { fulfill, abandon } = useTrackedItemActions()
+  const items = loops.data ?? []
+  if (!items.length) return null
+  return (
+    <Card eyebrow="Open loops" eyebrowIcon={<ClipboardCheck size={15} />}>
+      {items.map((it) => (
+        <div key={it.id} className="today-row open-loop-row">
+          <span className="open-loop-title">{it.title}</span>
+          {it.dueDate && <span className="muted small mono">{formatDate(it.dueDate)}</span>}
+          <Button variant="ghost" size="sm" onClick={() => fulfill.mutate(it.id)} disabled={fulfill.isPending}>
+            Done
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => abandon.mutate(it.id)} disabled={abandon.isPending}>
+            Drop
+          </Button>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+/** "Up next" — pre-event prep briefs for events starting soon. Hidden when none. */
+function UpNextBriefs() {
+  const briefs = useUpcomingBriefs()
+  const timeFmt = useTimeFormat()
+  const items = briefs.data ?? []
+  if (!items.length) return null
+  return (
+    <Card eyebrow="Up next" eyebrowIcon={<Clock size={15} />}>
+      {items.map((b) => (
+        <div key={b.id} className="brief-item">
+          <div className="brief-head">
+            <strong>{b.title}</strong>
+            <span className="muted small mono">{formatTime(new Date(b.eventStart), timeFmt)}</span>
+          </div>
+          <Markdown source={b.body} />
+        </div>
+      ))}
+    </Card>
   )
 }
 
