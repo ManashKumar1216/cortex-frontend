@@ -24,6 +24,7 @@ const GROUP_ORDER = [
   'Web search',
   'News',
   'Budget',
+  'Channels',
   'Features',
 ]
 

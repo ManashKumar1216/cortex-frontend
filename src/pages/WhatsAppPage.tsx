@@ -26,6 +26,19 @@ import { EmptyState, PageHeader } from '../components/ui'
 import { formatDate } from '../lib/format'
 import type { WhatsAppChat, WhatsAppStatus, WhatsAppSuggestion, WhatsAppSummary } from '../lib/types'
 
+/** A human label for a chat, with a sensible fallback when the name is still a raw JID. */
+function waName(name: string | undefined | null, jid?: string): string {
+  const n = (name ?? '').trim()
+  const looksRaw = (s: string): boolean => /@(lid|s\.whatsapp\.net|c\.us|g\.us|broadcast|newsletter)$/.test(s)
+  if (n && !looksRaw(n)) return n
+  const ref = jid ?? n
+  if (/@g\.us$/.test(ref)) return 'Group chat'
+  if (/@lid$/.test(ref)) return 'Unknown contact' // a privacy id, not a phone number
+  const base = ref.split('@')[0] ?? ''
+  if (/^\d{6,}$/.test(base)) return `+${base}` // real phone-number JID
+  return base || 'Chat'
+}
+
 function ReadOnlyBanner() {
   return (
     <div className="wa-readonly">
@@ -226,7 +239,7 @@ function SuggestionCard({
         <strong>{suggestion.title}</strong>
       </div>
       <p className="muted wa-suggestion-meta">
-        {suggestion.chatName ? `From ${suggestion.chatName}` : 'From a chat'}
+        {`From ${waName(suggestion.chatName, suggestion.chatJid)}`}
         {suggestion.whenISO ? ` · ${formatDate(suggestion.whenISO)}` : ''}
       </p>
       <div className="wa-suggestion-foot">
@@ -257,7 +270,7 @@ function SummariesTab() {
       {data.map((s: WhatsAppSummary) => (
         <div key={s.id} className="card wa-summary">
           <div className="wa-summary-head">
-            <strong>{s.chatName || 'Chat'}</strong>
+            <strong>{waName(s.chatName, s.chatJid)}</strong>
             <span className="mono muted">{s.messageCount} msgs{s.lastMessageAt ? ` · ${formatDate(s.lastMessageAt)}` : ''}</span>
           </div>
           <Markdown source={s.summary} />
@@ -281,7 +294,7 @@ function ChatsTab() {
             {c.kind === 'group' ? <Users size={16} /> : <User size={16} />}
           </span>
           <div className="wa-chat-main">
-            <strong>{c.name || c.jid.split('@')[0]}</strong>
+            <strong>{waName(c.name, c.jid)}</strong>
             <span className="muted mono">
               {c.messageCount} msgs
               {c.ingesting ? '' : ` · excluded (${c.excludedReason})`}
