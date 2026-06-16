@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import type { NewsSlotSection, NewsSummary, NewsTab, NewsTopic, NewsTopicKind } from '../lib/types'
+import type { NewsSlot, NewsSlotSection, NewsSummary, NewsTab, NewsTopic, NewsTopicKind } from '../lib/types'
 import { api } from './client'
 
 export function useNewsTab(tab: NewsTab) {
@@ -28,10 +28,10 @@ export function useNewsDetail(hash: string | null, enabled: boolean) {
   })
 }
 
-export function useNewsTopics(enabled = true) {
+export function useNewsTopics(tab: NewsTab, enabled = true) {
   return useQuery({
-    queryKey: ['news', 'topics'],
-    queryFn: () => api.get<NewsTopic[]>('/news/topics'),
+    queryKey: ['news', 'topics', tab],
+    queryFn: () => api.get<NewsTopic[]>(`/news/topics?tab=${tab}`),
     enabled,
   })
 }
@@ -48,6 +48,23 @@ export function useRefreshNews() {
   return useMutation({
     mutationFn: (tab: NewsTab) => api.post(`/news/refresh`, { tab }),
     onSuccess: invalidate,
+  })
+}
+
+/** Live "Load more" for one tab/slot — re-fetches + ranks the next best batch and
+ *  returns the updated section (with an `exhausted` flag). */
+export function useLoadMore() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ tab, slot }: { tab: NewsTab; slot: NewsSlot }) =>
+      api.post<NewsSlotSection>('/news/more', { tab, slot }),
+    onSuccess: (section, { tab }) => {
+      // Splice the freshly-extended section into the cached tab list in place.
+      qc.setQueryData<NewsSlotSection[]>(['news', 'tab', tab], (prev) =>
+        prev?.map((s) => (s.slot === section.slot ? section : s)),
+      )
+      void qc.invalidateQueries({ queryKey: ['news', 'summary'] })
+    },
   })
 }
 
@@ -72,7 +89,7 @@ export function useDeriveTopics() {
 export function useAddNewsTopic() {
   const invalidate = useNewsInvalidate()
   return useMutation({
-    mutationFn: (body: { kind: NewsTopicKind; label: string }) => api.post<NewsTopic[]>('/news/topics', body),
+    mutationFn: (body: { tab: NewsTab; kind: NewsTopicKind; label: string }) => api.post<NewsTopic[]>('/news/topics', body),
     onSuccess: invalidate,
   })
 }

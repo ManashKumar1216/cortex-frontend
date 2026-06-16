@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
 import {
+  ChevronDown,
   ExternalLink,
   EyeOff,
   FileText,
   FlaskConical,
+  Loader2,
   Moon,
   Newspaper,
   Pin,
@@ -21,6 +23,7 @@ import {
   recordNewsEngagement,
   useAddNewsTopic,
   useDeriveTopics,
+  useLoadMore,
   useMarkRead,
   useNewsDetail,
   useNewsSummary,
@@ -33,7 +36,7 @@ import {
 import { Modal } from '../components/Modal'
 import { PageHeader } from '../components/ui'
 import { formatDateTime, formatTime, useTimeFormat, type TimeFormat } from '../lib/time'
-import type { NewsItem, NewsSlot, NewsTab, NewsTopic } from '../lib/types'
+import type { NewsItem, NewsSlot, NewsSlotSection, NewsTab, NewsTopic } from '../lib/types'
 
 const TABS: { key: NewsTab; label: string; icon: typeof Newspaper }[] = [
   { key: 'news', label: 'News', icon: Newspaper },
@@ -46,6 +49,20 @@ const SLOT_META: Record<NewsSlot, { label: string; icon: typeof Sun }> = {
   afternoon: { label: 'Afternoon', icon: Sun },
   evening: { label: 'Evening', icon: Sunset },
   night: { label: 'Night', icon: Moon },
+}
+
+const SLOT_ORDER: NewsSlot[] = ['morning', 'afternoon', 'evening', 'night']
+
+/** Newest-run slot first (the slot just loaded surfaces on top), populated slots
+ *  ahead of empty ones, and any not-yet-run slots kept in time-of-day order. */
+function orderSections(sections: NewsSlotSection[]): NewsSlotSection[] {
+  return [...sections].sort((a, b) => {
+    const aHas = a.items.length > 0 ? 1 : 0
+    const bHas = b.items.length > 0 ? 1 : 0
+    if (aHas !== bHas) return bHas - aHas
+    if (aHas === 1) return (b.runAt ? Date.parse(b.runAt) : 0) - (a.runAt ? Date.parse(a.runAt) : 0)
+    return SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot)
+  })
 }
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -102,7 +119,7 @@ export function NewsPage() {
       {sections.isPending && <p className="muted">Loading…</p>}
       {sections.isError && <p className="error">{(sections.error as Error).message}</p>}
 
-      {sections.data?.map((section) => {
+      {sections.data && orderSections(sections.data).map((section) => {
         const meta = SLOT_META[section.slot]
         return (
           <section key={section.slot} className="card news-slot">
@@ -118,18 +135,55 @@ export function NewsPage() {
             {section.items.length === 0 ? (
               <p className="muted small">No {tab} for this time slot yet.</p>
             ) : (
-              <div className="news-card-grid">
-                {section.items.map((it) => (
-                  <NewsCard key={it.hash} item={it} onOpen={() => setSelected(it)} />
-                ))}
-              </div>
+              <>
+                <div className="news-card-grid">
+                  {section.items.map((it) => (
+                    <NewsCard key={it.hash} item={it} onOpen={() => setSelected(it)} />
+                  ))}
+                </div>
+                <SectionLoadMore tab={tab} slot={section.slot} exhausted={section.exhausted} />
+              </>
             )}
           </section>
         )
       })}
 
       {selected && <NewsDetail item={selected} onClose={() => setSelected(null)} />}
-      {manage && <NewsTopicsModal onClose={() => setManage(false)} />}
+      {manage && <NewsTopicsModal initialTab={tab} onClose={() => setManage(false)} />}
+    </div>
+  )
+}
+
+function SectionLoadMore({ tab, slot, exhausted }: { tab: NewsTab; slot: NewsSlot; exhausted?: boolean }) {
+  const loadMore = useLoadMore()
+  const [done, setDone] = useState(false)
+
+  if (exhausted || done) {
+    return <p className="news-loadmore-end muted small">That's everything fresh for this slot right now.</p>
+  }
+  return (
+    <div className="news-loadmore">
+      <button
+        type="button"
+        className="btn ghost sm"
+        disabled={loadMore.isPending}
+        onClick={() =>
+          loadMore.mutate(
+            { tab, slot },
+            { onSuccess: (section) => setDone(!!section.exhausted) },
+          )
+        }
+      >
+        {loadMore.isPending ? (
+          <>
+            <Loader2 size={14} className="spin" /> Finding more…
+          </>
+        ) : (
+          <>
+            <ChevronDown size={14} /> Load more
+          </>
+        )}
+      </button>
     </div>
   )
 }
@@ -212,8 +266,15 @@ function NewsDetail({ item, onClose }: { item: NewsItem; onClose: () => void }) 
   )
 }
 
-function NewsTopicsModal({ onClose }: { onClose: () => void }) {
-  const topics = useNewsTopics()
+const TOPIC_TAB_HINT: Record<NewsTab, string> = {
+  news: 'Drives Google News searches; Reddit communities below feed this tab too.',
+  articles: 'Drives Hacker News searches — technology, analysis & in-depth writing.',
+  research: 'Drives arXiv paper searches — academic & technical topics.',
+}
+
+function NewsTopicsModal({ initialTab, onClose }: { initialTab: NewsTab; onClose: () => void }) {
+  const [tab, setTab] = useState<NewsTab>(initialTab)
+  const topics = useNewsTopics(tab)
   const derive = useDeriveTopics()
   const add = useAddNewsTopic()
   const [kw, setKw] = useState('')
@@ -227,7 +288,7 @@ function NewsTopicsModal({ onClose }: { onClose: () => void }) {
     e.preventDefault()
     const clean = kind === 'subreddit' ? value.trim().replace(/^\/?r\//i, '') : value.trim()
     if (clean) {
-      add.mutate({ kind, label: clean })
+      add.mutate({ tab, kind, label: clean })
       reset()
     }
   }
@@ -235,12 +296,23 @@ function NewsTopicsModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="News topics" onClose={onClose}>
       <p className="muted small">
-        Cortex pulls Google News + Reddit (News), Hacker News (Articles) &amp; arXiv (Research) 4× a day (≈7am, 1pm,
-        6pm, 10pm). Topics auto-derive from your areas, projects, journal themes &amp; resources, and adapt to what you open.
+        Cortex pulls each feed 4× a day (≈7am, 1pm, 6pm, 10pm), then analyses what it finds and shows the best 10 per slot
+        — use “Load more” for the next 10. Each tab keeps its own topic list. Derive auto-fills all three from your areas,
+        projects, journal themes &amp; resources.
       </p>
+
+      <div className="news-topic-tabs">
+        {TABS.map((t) => (
+          <button key={t.key} className={`news-topic-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
+            <t.icon size={13} /> {t.label}
+          </button>
+        ))}
+      </div>
+      <p className="muted small news-topic-hint">{TOPIC_TAB_HINT[tab]}</p>
+
       <div className="news-derive">
         <button className="btn ghost sm" onClick={() => derive.mutate()} disabled={derive.isPending}>
-          <Sparkles size={13} /> {derive.isPending ? 'Analyzing your data…' : 'Re-derive from my data'}
+          <Sparkles size={13} /> {derive.isPending ? 'Analyzing your data…' : 'Re-derive all tabs from my data'}
         </button>
         {derive.data && <span className="muted small">+{derive.data.created} added</span>}
       </div>
@@ -259,19 +331,23 @@ function NewsTopicsModal({ onClose }: { onClose: () => void }) {
         </button>
       </form>
 
-      <h4 className="news-grp">Reddit communities</h4>
-      <div className="news-topic-list">
-        {subs.length === 0 && <p className="muted small">No subreddits yet.</p>}
-        {subs.map((t) => (
-          <TopicRow key={t.id} topic={t} sub />
-        ))}
-      </div>
-      <form className="news-add" onSubmit={(e) => submit(e, 'subreddit', sub, () => setSub(''))}>
-        <input className="input sm" placeholder="Add a subreddit (e.g. technology)" value={sub} onChange={(e) => setSub(e.target.value)} />
-        <button className="btn ghost sm" type="submit" disabled={!sub.trim()}>
-          <Plus size={13} /> Add
-        </button>
-      </form>
+      {tab === 'news' && (
+        <>
+          <h4 className="news-grp">Reddit communities</h4>
+          <div className="news-topic-list">
+            {subs.length === 0 && <p className="muted small">No subreddits yet.</p>}
+            {subs.map((t) => (
+              <TopicRow key={t.id} topic={t} sub />
+            ))}
+          </div>
+          <form className="news-add" onSubmit={(e) => submit(e, 'subreddit', sub, () => setSub(''))}>
+            <input className="input sm" placeholder="Add a subreddit (e.g. technology)" value={sub} onChange={(e) => setSub(e.target.value)} />
+            <button className="btn ghost sm" type="submit" disabled={!sub.trim()}>
+              <Plus size={13} /> Add
+            </button>
+          </form>
+        </>
+      )}
 
       <div className="form-actions">
         <button type="button" className="btn ghost" onClick={onClose}>

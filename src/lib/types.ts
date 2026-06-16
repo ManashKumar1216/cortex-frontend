@@ -325,6 +325,16 @@ export interface Note extends Timestamps {
   tags?: string[]
   source: 'manual' | 'chat'
   areaId?: string | null
+  superseded?: boolean
+  supersededAt?: string | null
+  supersedeReason?: string
+}
+
+export interface ConsolidationResult {
+  merged: number
+  skipped: number
+  pairs: number
+  durationMs: number
 }
 
 export type ResourceKind = 'link' | 'document' | 'book' | 'prompt'
@@ -454,6 +464,7 @@ export type NewsSlot = 'morning' | 'afternoon' | 'evening' | 'night'
 export type NewsTopicKind = 'keyword' | 'subreddit'
 
 export interface NewsTopic extends Timestamps {
+  tab: NewsTab
   kind: NewsTopicKind
   label: string
   source: 'auto' | 'manual'
@@ -483,6 +494,8 @@ export interface NewsSlotSection {
   itemCount: number
   readCount: number
   items: NewsItem[]
+  /** True when the last live "Load more" turned up nothing new — hide the button. */
+  exhausted?: boolean
 }
 
 export interface NewsSummary {

@@ -2,6 +2,8 @@ import { useMemo, useState, type FormEvent } from 'react'
 
 import {
   BookMarked,
+  ChevronDown,
+  ChevronRight,
   ExternalLink,
   FileText,
   Library,
@@ -10,12 +12,21 @@ import {
   Pin,
   PinOff,
   RefreshCw,
+  RotateCcw,
   Sparkles,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react'
 
 import { areas } from '../api/hooks'
-import { notes, useGenerateRollup, useRollups } from '../api/memory'
+import {
+  notes,
+  useConsolidateMemory,
+  useGenerateRollup,
+  useRestoreNote,
+  useRollups,
+  useSupersededNotes,
+} from '../api/memory'
 import { resources, useRefetchResource } from '../api/resources'
 import { Modal } from '../components/Modal'
 import { AreaSelect } from '../components/selects'
@@ -57,16 +68,41 @@ function NotesTab() {
   const create = notes.useCreate()
   const update = notes.useUpdate()
   const remove = notes.useRemove()
+  const consolidate = useConsolidateMemory()
   const [open, setOpen] = useState(false)
+  const [tidyNote, setTidyNote] = useState<string | null>(null)
+
+  const onTidy = () => {
+    setTidyNote(null)
+    consolidate.mutate(undefined, {
+      onSuccess: (res) =>
+        setTidyNote(
+          res.merged > 0
+            ? `Tidied ${res.merged} duplicate or outdated ${res.merged === 1 ? 'memory' : 'memories'}.`
+            : 'Nothing to tidy — your memory is already clean.',
+        ),
+    })
+  }
 
   return (
     <>
       <div className="row-between section-bar">
         <span className="muted small">Facts &amp; preferences Cortex keeps about you</span>
-        <button className="btn primary sm" onClick={() => setOpen(true)}>
-          + Note
-        </button>
+        <div className="row" style={{ gap: 'var(--sp-2)' }}>
+          <button
+            className="btn ghost sm"
+            onClick={onTidy}
+            disabled={consolidate.isPending}
+            title="Find and retire duplicate or outdated memories (reversible)"
+          >
+            <Wand2 size={14} /> {consolidate.isPending ? 'Tidying…' : 'Tidy memory'}
+          </button>
+          <button className="btn primary sm" onClick={() => setOpen(true)}>
+            + Note
+          </button>
+        </div>
       </div>
+      {tidyNote && <p className="muted small">{tidyNote}</p>}
 
       {isPending && <p className="muted">Loading…</p>}
       {isError && <p className="error">{(error as Error).message}</p>}
@@ -107,6 +143,8 @@ function NotesTab() {
         ))}
       </div>
 
+      <SupersededSection />
+
       {open && (
         <NoteModal
           onClose={() => setOpen(false)}
@@ -114,6 +152,47 @@ function NotesTab() {
         />
       )}
     </>
+  )
+}
+
+function SupersededSection() {
+  const { data } = useSupersededNotes()
+  const restore = useRestoreNote()
+  const [open, setOpen] = useState(false)
+
+  if (!data || data.length === 0) return null
+
+  return (
+    <div className="superseded-section">
+      <button className="superseded-toggle" onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        Superseded ({data.length})
+        <span className="muted small">— retired by newer memories, kept so you can restore them</span>
+      </button>
+      {open && (
+        <div className="list superseded-list">
+          {data.map((note) => (
+            <div key={note.id} className="card row-between note-card superseded-note">
+              <div className="note-body">
+                {note.title && <strong>{note.title}</strong>}
+                <p className="note-content">{note.content}</p>
+                {note.supersedeReason && <span className="muted small">Reason: {note.supersedeReason}</span>}
+              </div>
+              <div className="note-actions">
+                <button
+                  className="icon-btn"
+                  title="Restore to active memory"
+                  aria-label="Restore"
+                  onClick={() => restore.mutate(note.id)}
+                >
+                  <RotateCcw size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

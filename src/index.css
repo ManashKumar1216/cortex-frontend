@@ -1336,6 +1336,36 @@ textarea.input {
   gap: 2px;
   flex-shrink: 0;
 }
+/* Memory Hygiene — soft-retired notes */
+.superseded-section {
+  margin-top: var(--sp-5);
+  border-top: 1px solid var(--border);
+  padding-top: var(--sp-3);
+}
+.superseded-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+}
+.superseded-toggle:hover {
+  color: var(--text);
+}
+.superseded-list {
+  margin-top: var(--sp-2);
+}
+.superseded-note {
+  opacity: 0.6;
+}
+.superseded-note .note-content {
+  text-decoration: line-through;
+  text-decoration-color: var(--border-strong, var(--border));
+}
 .memory-section {
   display: flex;
   flex-direction: column;
@@ -3261,6 +3291,49 @@ textarea.input {
 }
 .news-add .input.sm {
   flex: 1;
+}
+
+/* Per-tab selector inside the Topics modal */
+.news-topic-tabs {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0.2rem 0 0.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.news-topic-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.84rem;
+  margin-bottom: -1px;
+}
+.news-topic-tab:hover {
+  color: var(--text);
+}
+.news-topic-tab.active {
+  color: var(--accent-2);
+  border-bottom-color: var(--accent);
+}
+.news-topic-hint {
+  margin: 0.45rem 0 0.2rem;
+}
+
+/* "Load more" foot of each slot section */
+.news-loadmore {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.9rem;
+}
+.news-loadmore-end {
+  text-align: center;
+  margin-top: 0.9rem;
+  font-style: italic;
 }
 
 /* News sources list (reliable links rendered from items, grouped by topic) */

@@ -69,39 +69,53 @@ export function SettingsPage() {
     return () => cancelAnimationFrame(id)
   }, [meta.data, settings.data])
 
-  // Scroll-spy: highlight the rail entry for the section nearest the viewport top.
+  // Scroll-spy: highlight the section currently under a reading line just below
+  // the sticky topbar. The page itself scrolls (the sidebar is sticky), so we
+  // track window scroll. Two edge cases the naive "nearest to top" approach got
+  // wrong: a tall section you've mostly scrolled PAST would win over the one
+  // actually filling the view, and the last (short) section can never reach the
+  // top — so at the very bottom we force it active.
   useEffect(() => {
     if (!meta.data || !settings.data) return
-    const els = railSections
-      .map((s) => document.getElementById(s.id))
-      .filter((el): el is HTMLElement => el !== null)
-    if (!els.length) return
-    if (!activeSection) setActiveSection(railSections[0]?.id ?? '')
-    // A callback only carries the sections whose visibility CHANGED, so keep a
-    // running set of which are visible. Positions are read FRESH at pick time —
-    // an entry's stored boundingClientRect goes stale once scrolling settles.
-    const visible = new Set<string>()
-    const obs = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) visible.add(e.target.id)
-          else visible.delete(e.target.id)
-        }
-        let best: string | null = null
-        let bestTop = Infinity
-        for (const id of visible) {
-          const top = document.getElementById(id)?.getBoundingClientRect().top
-          if (top != null && top < bestTop) {
-            bestTop = top
-            best = id
-          }
-        }
-        if (best) setActiveSection(best)
-      },
-      { rootMargin: '-80px 0px -55% 0px', threshold: 0 },
-    )
-    els.forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
+    const ids = railSections.map((s) => s.id)
+    if (!ids.length) return
+
+    let frame = 0
+
+    const pick = (): void => {
+      frame = 0
+      const doc = document.documentElement
+      // At the bottom of the page the last section is the active one, even if
+      // it never crosses the reading line.
+      if (window.innerHeight + window.scrollY >= doc.scrollHeight - 2) {
+        setActiveSection(ids[ids.length - 1]!)
+        return
+      }
+      // Otherwise: the last section whose heading has scrolled above the reading
+      // line (~a third down the viewport, so it tracks the section in view
+      // rather than lagging on the one whose tail is still near the very top).
+      const line = window.innerHeight * 0.33
+      let active = ids[0]!
+      for (const id of ids) {
+        const el = document.getElementById(id)
+        if (el && el.getBoundingClientRect().top - line <= 0) active = id
+      }
+      setActiveSection(active)
+    }
+
+    const onScroll = (): void => {
+      if (frame) return
+      frame = requestAnimationFrame(pick)
+    }
+
+    pick()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meta.data, settings.data, railSections])
 

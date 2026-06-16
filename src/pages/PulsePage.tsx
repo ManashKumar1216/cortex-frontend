@@ -14,6 +14,7 @@ const LINK_ROUTE: Record<string, string> = {
   task: '/tasks',
   habit: '/habits',
   rollup: '/memory',
+  memory: '/memory',
   whatsapp: '/whatsapp',
   reflection: '/reflection',
   briefing: '/today',

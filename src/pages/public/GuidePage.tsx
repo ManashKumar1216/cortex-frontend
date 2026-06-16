@@ -7,12 +7,13 @@ export function GuidePage() {
   usePageTitle('Guide — Cortex')
   const [active, setActive] = useState<string>(GUIDE_SECTIONS[0]?.id ?? '')
 
-  // Scroll-spy: highlight the section whose heading sits at the top of the reading
-  // area. At the very bottom of the page the last (often short) section can never
-  // scroll high enough to win on its own, so bottom-of-page forces it active.
+  // Scroll-spy: highlight the section that currently owns the reading area. The
+  // probe line sits ~a third down the viewport (not at the very top) so the
+  // active section matches what's prominently in view rather than lagging on the
+  // previous section whose tail is still near the top. At the very bottom the
+  // last (often short) section can never reach the line, so we force it active.
   useEffect(() => {
     const ids = GUIDE_SECTIONS.map((s) => s.id)
-    const ACTIVE_LINE = 130 // px below the viewport top
     let raf = 0
     const update = () => {
       cancelAnimationFrame(raf)
@@ -23,10 +24,11 @@ export function GuidePage() {
           setActive(ids[ids.length - 1] ?? '')
           return
         }
+        const line = window.innerHeight * 0.33 // reading line, ~a third down
         let current = ids[0] ?? ''
         for (const id of ids) {
           const el = document.getElementById(id)
-          if (el && el.getBoundingClientRect().top <= ACTIVE_LINE) current = id
+          if (el && el.getBoundingClientRect().top <= line) current = id
           else break
         }
         setActive(current)
