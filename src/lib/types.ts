@@ -197,6 +197,8 @@ export interface EmailEndpoint {
   user: string
 }
 
+export type EmailAccountHealth = 'ok' | 'auth_failed' | 'error'
+
 export interface EmailAccount extends Timestamps {
   label: string
   email: string
@@ -206,6 +208,10 @@ export interface EmailAccount extends Timestamps {
   foldersToWatch: string[]
   enabled: boolean
   lastUid?: number
+  authState?: EmailAccountHealth
+  lastError?: string | null
+  lastErrorAt?: string | null
+  lastOkAt?: string | null
 }
 
 export type EmailCategory = 'action' | 'fyi' | 'ignore'
@@ -230,6 +236,21 @@ export interface EmailIntegrationStatus {
   accounts: number
   configured: boolean
 }
+
+/** A grouped email conversation (subject-normalized within a mailbox). */
+export interface EmailThread {
+  threadKey: string
+  subject: string
+  participants: string[]
+  lastDate: string | null
+  messageCount: number
+  snippet: string
+  categories: EmailCategory[]
+  hasAction: boolean
+}
+
+/** A single message inside a thread — same shape as an inbox message, with the body. */
+export type EmailThreadMessage = EmailMessage & { id: string }
 
 export interface EmailDraft {
   to: string
@@ -268,6 +289,20 @@ export interface WhatsAppChat {
   lastMessageAt?: string | null
   ingesting: boolean
   excludedReason: string | null
+}
+
+/** One observed message in a chat thread (text-only, read-only). */
+export interface WhatsAppMessage extends Timestamps {
+  id: string
+  chatJid: string
+  chatName?: string
+  isGroup: boolean
+  fromMe: boolean
+  sender?: string
+  senderName?: string
+  text: string
+  ts: string
+  msgId: string
 }
 
 export interface WhatsAppSummary extends Timestamps {
@@ -833,6 +868,28 @@ export interface BudgetSummary {
   cards: { id: string; name: string; last4?: string; creditLimit: number | null; outstanding: number; available: number | null; dueDay: number | null }[]
   upcomingBills: { id: string; name: string; amount: number | null; nextDue: string; daysUntil: number; kind: string }[]
   overBudgetAreas: number
+}
+
+export type TrendGranularity = 'day' | 'week' | 'month' | 'year'
+
+export interface TrendBucket {
+  key: string
+  label: string
+  start: string
+  end: string
+  expense: number
+  income: number
+}
+
+export interface BudgetTrends {
+  currency: { code: string; symbol: string; locale: string }
+  granularity: TrendGranularity
+  areaId: string | null
+  buckets: TrendBucket[]
+  byArea: { areaId: string | null; name: string; code: string | null; spent: number }[]
+  totalExpense: number
+  avgExpense: number
+  changePct: number | null
 }
 
 // --- Ambient listening (Phase 19) ---

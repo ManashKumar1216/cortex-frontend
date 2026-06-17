@@ -334,7 +334,7 @@ function FieldControl({
       >
         {field.options?.map((o) => (
           <option key={o} value={o}>
-            {o}
+            {field.optionLabels?.[o] ?? o}
           </option>
         ))}
       </select>

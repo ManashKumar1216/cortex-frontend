@@ -2049,6 +2049,11 @@ textarea.input {
   color: var(--muted);
   font-size: 0.85rem;
 }
+.email-health {
+  margin-left: var(--sp-2);
+  text-transform: none;
+  letter-spacing: 0;
+}
 .email-message {
   display: flex;
   flex-direction: column;
@@ -2184,6 +2189,11 @@ textarea.input {
   margin: 0 0 var(--sp-4);
   font-size: 0.85rem;
 }
+.wa-reconnecting {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 
 .wa-suggestion-head {
   display: flex;
@@ -2195,6 +2205,50 @@ textarea.input {
   font-size: 0.85rem;
 }
 .wa-suggestion-foot {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+/* Inline review-card editor (WhatsApp suggestions + triaged email → task/reminder/event). */
+.action-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+}
+.action-form-types {
+  display: flex;
+  gap: var(--sp-1);
+}
+.action-form-title,
+.action-form-notes,
+.action-form-when input {
+  width: 100%;
+  padding: var(--sp-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.action-form-title {
+  font-weight: 600;
+}
+.action-form-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.action-form-when input {
+  width: fit-content;
+}
+.action-form-notes {
+  font-family: inherit;
+  resize: vertical;
+}
+.action-form-foot {
   display: flex;
   gap: var(--sp-2);
 }
@@ -2479,6 +2533,85 @@ textarea.input {
 }
 .mood-dot {
   fill: var(--accent);
+}
+
+/* budget expense-trend bar chart */
+.budget-trendcard {
+  margin-top: var(--sp-3);
+}
+.trend-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: var(--sp-2);
+}
+.trend-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+.trend-axis {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.trend-xlabel {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.trend-bar {
+  fill: var(--accent);
+  transition: opacity 0.12s ease;
+}
+.trend-bar.on,
+.trend-bar:hover {
+  opacity: 0.78;
+}
+.trend-value {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  /* Outline so the value reads cleanly over bars and gridlines. */
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.trend-area {
+  fill: var(--accent-soft);
+  stroke: none;
+}
+.trend-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.trend-dot {
+  fill: var(--accent);
+}
+.trend-typeswitch {
+  display: inline-flex;
+  gap: 6px;
+}
+.budget-arearow {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 10px);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.budget-arearow:hover {
+  border-color: var(--accent);
+}
+.budget-arearow.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* theme chips (journal + reflection) */
@@ -2999,6 +3132,24 @@ textarea.input {
   justify-content: center;
   gap: var(--sp-3);
   margin-bottom: var(--sp-3);
+}
+.budget-review-banner {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.budget-review-banner:hover {
+  background: var(--surface-3);
 }
 .budget-overall {
   margin-bottom: var(--sp-4);
@@ -6081,6 +6232,320 @@ a.btn:hover {
 }
 .ach-desc {
   line-height: 1.35;
+}
+
+/* ─────────── Channels: two-pane conversation reader (WhatsApp + Email) ─────────── */
+.thread-pane {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 14px;
+  height: clamp(460px, 72vh, 880px);
+  margin-top: 14px;
+}
+.thread-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.thread-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.thread-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+}
+.thread-list .filter-row {
+  padding: 10px 12px 4px;
+  margin: 0;
+}
+.thread-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px;
+  gap: 4px;
+}
+.thread-empty {
+  padding: 12px;
+}
+
+/* Chat rows (WhatsApp list) */
+.wa-chat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.wa-chat-row:hover {
+  background: var(--surface-2);
+}
+.wa-chat-row.active {
+  background: var(--accent-soft);
+}
+.wa-chat-row.excluded {
+  opacity: 0.55;
+}
+.wa-chat-icon,
+.wa-convo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-dim);
+}
+.wa-chat-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+.wa-chat-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-chat-main .mono {
+  font-size: 11px;
+}
+.wa-chat-mute {
+  flex: 0 0 auto;
+}
+
+/* Right-pane shell shared by both channels */
+.thread-detail {
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  display: flex;
+}
+.thread-detail-empty {
+  margin: auto;
+  padding: 24px;
+}
+
+/* WhatsApp + Email conversation panes */
+.wa-convo,
+.email-convo {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+.wa-convo-head,
+.email-convo-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.wa-convo-title,
+.email-convo-title {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.wa-convo-title strong,
+.email-convo-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wa-back {
+  display: none;
+}
+.wa-convo-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wa-loading-older {
+  text-align: center;
+  padding: 4px 0 8px;
+}
+.wa-bubble-row {
+  display: flex;
+  justify-content: flex-start;
+}
+.wa-bubble-row.me {
+  justify-content: flex-end;
+}
+.wa-bubble {
+  max-width: min(78%, 560px);
+  padding: 7px 11px 5px;
+  border-radius: 12px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+}
+.wa-bubble-row.me .wa-bubble {
+  background: var(--accent-soft);
+  border-color: rgba(232, 214, 168, 0.25);
+}
+.wa-bubble-sender {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.wa-bubble-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.wa-bubble-time {
+  align-self: flex-end;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-family: var(--font-mono);
+}
+.wa-convo-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+/* Email thread list rows */
+.email-thread-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 11px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.email-thread-row:hover {
+  background: var(--surface-2);
+}
+.email-thread-row.active {
+  background: var(--accent-soft);
+}
+.email-thread-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.email-thread-subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.email-thread-row-top .mono {
+  font-size: 11px;
+  flex: 0 0 auto;
+}
+.email-thread-people,
+.email-thread-snippet {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.email-thread-snippet {
+  opacity: 0.8;
+}
+.email-thread-meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+/* Email conversation (stacked full messages) */
+.email-convo-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.email-msg {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  padding: 11px 13px;
+}
+.email-msg-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.email-msg-to {
+  margin-top: 1px;
+}
+.email-msg-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 8px 0;
+  color: var(--text);
+}
+
+/* Mobile: collapse to one pane; show the selected conversation with a back button. */
+@media (max-width: 760px) {
+  .thread-pane {
+    grid-template-columns: 1fr;
+    height: clamp(440px, 78vh, 900px);
+  }
+  .thread-pane .thread-detail {
+    display: none;
+  }
+  .thread-pane.has-selection .thread-list {
+    display: none;
+  }
+  .thread-pane.has-selection .thread-detail {
+    display: flex;
+  }
+  .wa-back {
+    display: inline-flex;
+  }
 }
 @media (max-width: 720px) {
   .game-records {

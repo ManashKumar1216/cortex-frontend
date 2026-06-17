@@ -1,12 +1,13 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 
-import { ChevronLeft, ChevronRight, CreditCard, Plus, Upload, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CreditCard, Pencil, Plus, Upload, X } from 'lucide-react'
 
 import {
   importStatement,
   useBills,
   useBudgetActions,
   useBudgetSummary,
+  useBudgetTrends,
   useExpenseSuggestions,
   usePaymentMethods,
   useTargets,
@@ -16,7 +17,7 @@ import { Modal } from '../components/Modal'
 import { AreaSelect } from '../components/selects'
 import { EmptyState, Field, PageHeader, Tabs } from '../components/ui'
 import { formatDay, formatMoney } from '../lib/format'
-import type { BudgetSummary, PaymentMethod, Transaction } from '../lib/types'
+import type { BudgetSummary, PaymentMethod, Transaction, TrendBucket, TrendGranularity } from '../lib/types'
 
 function currentMonth(): string {
   const d = new Date()
@@ -32,7 +33,7 @@ function monthLabel(m: string): string {
   return new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 }
 
-type Tab = 'overview' | 'ledger' | 'bills' | 'cards' | 'import'
+type Tab = 'overview' | 'trends' | 'ledger' | 'bills' | 'cards' | 'import'
 
 export function BudgetPage() {
   const [month, setMonth] = useState(currentMonth())
@@ -40,6 +41,9 @@ export function BudgetPage() {
   const summary = useBudgetSummary(month)
   const currency = summary.data?.currency.code ?? 'INR'
   const fmt = (n: number) => formatMoney(n, currency)
+  // Pending expense suggestions (bank/card alerts from email, CSV imports) live on
+  // the Import tab's "To review" list — surface the count so they're not missed.
+  const pendingCount = useExpenseSuggestions().data?.length ?? 0
 
   return (
     <div>
@@ -48,14 +52,23 @@ export function BudgetPage() {
       <Tabs
         value={tab}
         onChange={(v) => setTab(v as Tab)}
-        tabs={(['overview', 'ledger', 'bills', 'cards', 'import'] as Tab[]).map((t) => ({
+        tabs={(['overview', 'trends', 'ledger', 'bills', 'cards', 'import'] as Tab[]).map((t) => ({
           value: t,
-          label: t[0].toUpperCase() + t.slice(1),
+          label:
+            t === 'import' && pendingCount > 0
+              ? `Import (${pendingCount})`
+              : t[0].toUpperCase() + t.slice(1),
         }))}
       />
       <div style={{ height: 'var(--sp-2)' }} />
 
-      {tab !== 'cards' && tab !== 'import' && (
+      {tab !== 'import' && pendingCount > 0 && (
+        <button type="button" className="budget-review-banner" onClick={() => setTab('import')}>
+          {pendingCount} transaction{pendingCount > 1 ? 's' : ''} from email awaiting review — review &amp; add →
+        </button>
+      )}
+
+      {tab !== 'cards' && tab !== 'import' && tab !== 'trends' && (
         <div className="budget-monthnav">
           <button className="icon-btn" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month">
             <ChevronLeft size={16} />
@@ -70,6 +83,7 @@ export function BudgetPage() {
       {summary.isError && <p className="error">{(summary.error as Error).message}</p>}
 
       {tab === 'overview' && summary.data && <Overview s={summary.data} fmt={fmt} />}
+      {tab === 'trends' && <Trends fmt={fmt} />}
       {tab === 'ledger' && <Ledger month={month} fmt={fmt} />}
       {tab === 'bills' && <Bills fmt={fmt} />}
       {tab === 'cards' && <Cards s={summary.data} fmt={fmt} />}
@@ -90,6 +104,8 @@ function Bar({ spent, limit }: { spent: number; limit: number | null }) {
 
 function Overview({ s, fmt }: { s: BudgetSummary; fmt: (n: number) => string }) {
   const [editing, setEditing] = useState(false)
+  const actions = useBudgetActions()
+  const hasUncategorized = s.byArea.some((a) => !a.areaId && a.spent > 0)
   return (
     <div>
       <section className="card budget-overall">
@@ -104,9 +120,16 @@ function Overview({ s, fmt }: { s: BudgetSummary; fmt: (n: number) => string }) 
               {s.overall.daysLeft} days left · net {fmt(s.totals.net)} · {s.totals.count} entries
             </span>
           </div>
-          <button className="btn ghost sm" onClick={() => setEditing(true)}>
-            Set budgets
-          </button>
+          <div className="row">
+            {hasUncategorized && (
+              <button className="btn ghost sm" onClick={() => actions.recategorize.mutate()} disabled={actions.recategorize.isPending}>
+                {actions.recategorize.isPending ? 'Sorting…' : 'Auto-categorize'}
+              </button>
+            )}
+            <button className="btn ghost sm" onClick={() => setEditing(true)}>
+              Set budgets
+            </button>
+          </div>
         </div>
         <Bar spent={s.overall.spent} limit={s.overall.limit} />
       </section>
@@ -175,6 +198,267 @@ function Overview({ s, fmt }: { s: BudgetSummary; fmt: (n: number) => string }) 
   )
 }
 
+const GRAN_LABEL: Record<TrendGranularity, string> = { day: 'Daily', week: 'Weekly', month: 'Monthly', year: 'Yearly' }
+const GRAN_NOUN: Record<TrendGranularity, { one: string; many: string }> = {
+  day: { one: 'day', many: 'days' },
+  week: { one: 'week', many: 'weeks' },
+  month: { one: 'month', many: 'months' },
+  year: { one: 'year', many: 'years' },
+}
+
+/** Compact axis number, e.g. 1.2k / 3.4M (currency-symbol prefixed by the caller). */
+function compactNum(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}k`
+  return String(Math.round(n))
+}
+
+type ChartType = 'bar' | 'line' | 'area'
+
+function ExpenseTrendChart({
+  buckets,
+  fmt,
+  symbol,
+  type,
+}: {
+  buckets: TrendBucket[]
+  fmt: (n: number) => string
+  symbol: string
+  type: ChartType
+}) {
+  const W = 720
+  const H = 260
+  const PAD_L = 34
+  const PAD_R = 10
+  const PAD_T = 14
+  const PAD_B = 30
+  const innerW = W - PAD_L - PAD_R
+  const innerH = H - PAD_T - PAD_B
+  const n = buckets.length
+  const max = Math.max(1, ...buckets.map((b) => b.expense))
+  const slot = innerW / Math.max(1, n)
+  const barW = Math.min(46, slot * 0.6)
+  const grid = [0, 0.25, 0.5, 0.75, 1]
+  const baseY = PAD_T + innerH
+  const [hover, setHover] = useState<number | null>(null)
+
+  // Point geometry (shared by line + area). Single point is centered; otherwise
+  // points span the full inner width so the curve uses the whole canvas.
+  const cx = (i: number): number =>
+    type === 'bar' || n === 1 ? PAD_L + slot * i + slot / 2 : PAD_L + (i / (n - 1)) * innerW
+  const cy = (v: number): number => PAD_T + innerH * (1 - v / max)
+  const barH = (v: number): number => (v > 0 ? Math.max(2, innerH * (v / max)) : 0)
+  const linePts = buckets.map((b, i) => `${cx(i).toFixed(1)},${cy(b.expense).toFixed(1)}`).join(' ')
+  const areaPts = `${cx(0).toFixed(1)},${baseY} ${linePts} ${cx(n - 1).toFixed(1)},${baseY}`
+  const hitW = type === 'bar' ? slot : innerW / Math.max(1, n - 1)
+
+  return (
+    <svg
+      className="trend-chart"
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label="Expense trend"
+      onMouseLeave={() => setHover(null)}
+    >
+      {grid.map((g, i) => {
+        const yy = PAD_T + innerH * g
+        return (
+          <g key={i}>
+            <line className="trend-grid" x1={PAD_L} x2={W - PAD_R} y1={yy} y2={yy} />
+            <text className="trend-axis" x={PAD_L - 5} y={yy + 3} textAnchor="end">
+              {symbol}
+              {compactNum(max * (1 - g))}
+            </text>
+          </g>
+        )
+      })}
+
+      {type === 'bar' &&
+        buckets.map((b, i) => (
+          <rect
+            key={b.key}
+            className={`trend-bar${hover === i ? ' on' : ''}`}
+            x={cx(i) - barW / 2}
+            y={baseY - barH(b.expense)}
+            width={barW}
+            height={barH(b.expense)}
+            rx={3}
+          />
+        ))}
+
+      {type === 'area' && n > 1 && <polygon className="trend-area" points={areaPts} />}
+      {type !== 'bar' && n > 1 && <polyline className="trend-line" points={linePts} />}
+      {type !== 'bar' &&
+        buckets.map((b, i) => (
+          <circle key={b.key} className="trend-dot" cx={cx(i)} cy={cy(b.expense)} r={hover === i ? 4.5 : 2.8} />
+        ))}
+
+      {buckets.map((b, i) => (
+        <text key={`x-${b.key}`} className="trend-xlabel" x={cx(i)} y={H - 10} textAnchor="middle">
+          {b.label}
+        </text>
+      ))}
+
+      {/* Hover value label at the top of the bar / at the point. */}
+      {hover !== null &&
+        buckets[hover] &&
+        (() => {
+          const b = buckets[hover]
+          const px = cx(hover)
+          const topY = type === 'bar' ? baseY - barH(b.expense) : cy(b.expense)
+          const labelY = Math.max(PAD_T + 9, topY - 9)
+          const anchor = hover === 0 ? 'start' : hover === n - 1 ? 'end' : 'middle'
+          return (
+            <text className="trend-value" x={px} y={labelY} textAnchor={anchor}>
+              {fmt(b.expense)}
+            </text>
+          )
+        })()}
+
+      {/* Transparent per-column hit areas so hover works for bar, line and area. */}
+      {buckets.map((b, i) => (
+        <rect
+          key={`hit-${b.key}`}
+          x={cx(i) - hitW / 2}
+          y={PAD_T}
+          width={hitW}
+          height={innerH}
+          fill="transparent"
+          onMouseEnter={() => setHover(i)}
+        />
+      ))}
+    </svg>
+  )
+}
+
+const CHART_LABEL: Record<ChartType, string> = { bar: 'Bar', line: 'Line', area: 'Area' }
+
+function Trends({ fmt }: { fmt: (n: number) => string }) {
+  const [g, setG] = useState<TrendGranularity>('day')
+  const [chart, setChart] = useState<ChartType>('bar')
+  // The area the chart series is filtered to (null = all areas). 'none' = Uncategorized.
+  const [area, setArea] = useState<string | null>(null)
+  const { data, isPending } = useBudgetTrends(g, area)
+  const noun = GRAN_NOUN[g]
+  const activeArea = data?.byArea.find((a) => (a.areaId ?? 'none') === area)
+  const maxArea = Math.max(1, ...(data?.byArea ?? []).map((a) => a.spent))
+  const areaTotal = Math.max(1, (data?.byArea ?? []).reduce((s, a) => s + a.spent, 0))
+
+  return (
+    <div>
+      <div className="filter-row">
+        {(['day', 'week', 'month', 'year'] as TrendGranularity[]).map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            className={`chip${g === opt ? ' active' : ''}`}
+            onClick={() => setG(opt)}
+          >
+            {GRAN_LABEL[opt]}
+          </button>
+        ))}
+      </div>
+      <div style={{ height: 'var(--sp-2)' }} />
+
+      {isPending && <p className="muted">Loading…</p>}
+      {data && (
+        <>
+          <section className="card budget-overall">
+            <div className="row-between">
+              <div>
+                <div className="budget-spent">
+                  {fmt(data.avgExpense)}
+                  <span className="muted"> avg / {noun.one}</span>
+                </div>
+                <span className="muted small">
+                  {fmt(data.totalExpense)} over {data.buckets.length} {noun.many}
+                  {activeArea ? ` · ${activeArea.name}` : ''}
+                  {data.changePct != null && (
+                    <>
+                      {' · last '}
+                      {noun.one}{' '}
+                      <span className={data.changePct > 0 ? 'exp-amt' : 'ok-amt'}>
+                        {data.changePct > 0 ? '▲' : '▼'} {Math.abs(data.changePct)}%
+                      </span>
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <section className="card budget-trendcard">
+            <div className="row-between budget-sectionhead">
+              <h2 className="budget-h2">
+                Expense trend
+                {activeArea && <span className="muted small"> · {activeArea.name}</span>}
+              </h2>
+              <div className="trend-typeswitch">
+                {(['bar', 'line', 'area'] as ChartType[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`chip${chart === t ? ' active' : ''}`}
+                    onClick={() => setChart(t)}
+                  >
+                    {CHART_LABEL[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {data.buckets.every((b) => b.expense === 0) ? (
+              <EmptyState message="No spending in this range yet." hint="Log expenses or connect email/WhatsApp to see trends." />
+            ) : (
+              <ExpenseTrendChart buckets={data.buckets} fmt={fmt} symbol={data.currency.symbol} type={chart} />
+            )}
+          </section>
+
+          {data.byArea.length > 0 && (
+            <section className="card budget-trendcard">
+              <div className="row-between budget-sectionhead">
+                <h2 className="budget-h2">By area</h2>
+                {area && (
+                  <button type="button" className="btn ghost sm" onClick={() => setArea(null)}>
+                    Show all
+                  </button>
+                )}
+              </div>
+              <p className="muted small">Tap an area to filter the chart to it.</p>
+              <div className="list">
+                {data.byArea.map((a) => {
+                  const key = a.areaId ?? 'none'
+                  const on = key === area
+                  const pct = Math.round((a.spent / areaTotal) * 100)
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`budget-arearow${on ? ' active' : ''}`}
+                      onClick={() => setArea(on ? null : key)}
+                    >
+                      <div className="row-between">
+                        <span>
+                          {a.code && <span className="area-code">{a.code}</span>} {a.name}
+                        </span>
+                        <span className="muted">
+                          {fmt(a.spent)} · {pct}%
+                        </span>
+                      </div>
+                      <div className="budget-bar">
+                        <div className="budget-bar-fill" style={{ width: `${Math.round((a.spent / maxArea) * 100)}%` }} />
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function TargetsModal({ s, fmt, onClose }: { s: BudgetSummary; fmt: (n: number) => string; onClose: () => void }) {
   const { data: targets } = useTargets()
   const actions = useBudgetActions()
@@ -239,6 +523,7 @@ function Ledger({ month, fmt }: { month: string; fmt: (n: number) => string }) {
   const [areaId, setAreaId] = useState('')
   const [method, setMethod] = useState('')
   const [type, setType] = useState<'expense' | 'income'>('expense')
+  const [editing, setEditing] = useState<Transaction | null>(null)
   const methodName = (id?: string | null) => methods?.find((m) => m.id === id)?.name
 
   const add = (e: FormEvent) => {
@@ -285,6 +570,9 @@ function Ledger({ month, fmt }: { month: string; fmt: (n: number) => string }) {
                 {t.type === 'income' ? '+' : t.type === 'card_payment' ? '' : '−'}
                 {fmt(t.amount)}
               </span>
+              <button className="icon-btn" aria-label="Edit" onClick={() => setEditing(t)}>
+                <Pencil size={14} />
+              </button>
               <button className="icon-btn" aria-label="Delete" onClick={() => actions.deleteTxn.mutate(t.id)}>
                 <X size={14} />
               </button>
@@ -292,7 +580,67 @@ function Ledger({ month, fmt }: { month: string; fmt: (n: number) => string }) {
           </div>
         ))}
       </div>
+      {editing && <TxnEditModal txn={editing} onClose={() => setEditing(null)} />}
     </div>
+  )
+}
+
+function TxnEditModal({ txn, onClose }: { txn: Transaction; onClose: () => void }) {
+  const actions = useBudgetActions()
+  const [amount, setAmount] = useState(String(txn.amount))
+  const [note, setNote] = useState(txn.note ?? '')
+  const [date, setDate] = useState(txn.date)
+  const [areaId, setAreaId] = useState(txn.areaId ?? '')
+  const [method, setMethod] = useState(txn.paymentMethodId ?? '')
+  const [type, setType] = useState<Transaction['type']>(txn.type)
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const n = Number(amount)
+    if (!n || n <= 0) return
+    actions.updateTxn.mutate(
+      {
+        id: txn.id,
+        body: {
+          amount: n,
+          type,
+          date,
+          note: note.trim() || undefined,
+          areaId: areaId || null,
+          paymentMethodId: method || null,
+        },
+      },
+      { onSuccess: onClose },
+    )
+  }
+
+  return (
+    <Modal title="Edit transaction" onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <Field label="Amount">
+          <input className="input" type="number" min={0} step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+        </Field>
+        <Field label="What for?">
+          <input className="input" value={note} onChange={(e) => setNote(e.target.value)} />
+        </Field>
+        <Field label="Date">
+          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </Field>
+        <Field label="Area"><AreaSelect value={areaId} onChange={setAreaId} emptyLabel="No area" /></Field>
+        <Field label="Payment method"><MethodSelect value={method} onChange={setMethod} /></Field>
+        <Field label="Type">
+          <select className="input" value={type} onChange={(e) => setType(e.target.value as Transaction['type'])}>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="card_payment">Card payment</option>
+          </select>
+        </Field>
+        <div className="form-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn primary" disabled={actions.updateTxn.isPending}>Save</button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -474,7 +822,7 @@ function Import({ fmt }: { fmt: (n: number) => string }) {
     setMsg('')
     try {
       const r = await importStatement(file)
-      setMsg(`Parsed ${r.parsed} rows → ${r.created} expenses to review.`)
+      setMsg(`Parsed ${r.parsed} rows → ${r.created} new expenses captured.`)
     } catch (err) {
       setMsg((err as Error).message)
     } finally {
@@ -489,7 +837,7 @@ function Import({ fmt }: { fmt: (n: number) => string }) {
     <div>
       <section className="card budget-import">
         <div className="budget-import-head"><Upload size={16} /> Import a statement (CSV)</div>
-        <p className="muted small">Columns are auto-detected (date, amount, description). Rows become reviewable suggestions — nothing is added until you confirm. Bank transaction-alert emails also appear here.</p>
+        <p className="muted small">Columns are auto-detected (date, amount, description). Expenses detected in bank emails and WhatsApp flow in here too. With auto-add on (Settings → Budget) they're added straight to your ledger — editable and deletable; turn it off to review each one below first.</p>
         <label className="btn ghost sm budget-upload">
           {busy ? 'Importing…' : 'Choose CSV'}
           <input type="file" accept=".csv,text/csv" onChange={onFile} disabled={busy} hidden />

@@ -12,6 +12,7 @@ export interface SettingField {
   min?: number
   max?: number
   options?: string[]
+  optionLabels?: Record<string, string>
   help?: string
   live: boolean
 }

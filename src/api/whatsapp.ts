@@ -1,12 +1,35 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type {
+  DumpItem,
   WhatsAppChat,
+  WhatsAppMessage,
   WhatsAppStatus,
   WhatsAppSuggestion,
   WhatsAppSummary,
 } from '../lib/types'
 import { api } from './client'
+
+const WA_PAGE = 40
+
+/**
+ * A chat's messages, newest-first per page, with load-older-on-scroll. Each page
+ * returns up to WA_PAGE messages older than the previous page's oldest `ts`.
+ */
+export function useWhatsAppChatMessages(chatJid: string | null) {
+  return useInfiniteQuery({
+    queryKey: ['whatsapp', 'messages', chatJid],
+    enabled: !!chatJid,
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) =>
+      api.get<WhatsAppMessage[]>(
+        `/integrations/whatsapp/messages?chatJid=${encodeURIComponent(chatJid as string)}&limit=${WA_PAGE}` +
+          (pageParam ? `&before=${encodeURIComponent(pageParam)}` : ''),
+      ),
+    getNextPageParam: (lastPage) =>
+      lastPage.length === WA_PAGE ? lastPage[lastPage.length - 1]?.ts : undefined,
+  })
+}
 
 export function useWhatsAppStatus() {
   return useQuery({
@@ -59,9 +82,19 @@ export function useWhatsAppActions() {
     onSuccess: invalidate,
   })
   const addSuggestion = useMutation({
-    mutationFn: (id: string) =>
-      api.post<{ created: { type: string; id: string } }>(`/integrations/whatsapp/suggestions/${id}/add`, {}),
-    onSuccess: invalidate,
+    mutationFn: ({ id, item }: { id: string; item?: Partial<DumpItem> }) =>
+      api.post<{ created: { type: string; id: string } }>(
+        `/integrations/whatsapp/suggestions/${id}/add`,
+        item ?? {},
+      ),
+    onSuccess: () => {
+      invalidate()
+      // The new item shows up under tasks/reminders/calendar/today too.
+      void qc.invalidateQueries({ queryKey: ['tasks'] })
+      void qc.invalidateQueries({ queryKey: ['reminders'] })
+      void qc.invalidateQueries({ queryKey: ['calendar'] })
+      void qc.invalidateQueries({ queryKey: ['today'] })
+    },
   })
   const dismissSuggestion = useMutation({
     mutationFn: (id: string) =>

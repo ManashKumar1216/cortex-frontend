@@ -4,18 +4,40 @@ import type {
   Bill,
   BudgetSummary,
   BudgetTarget,
+  BudgetTrends,
   ExpenseSuggestion,
   PaymentMethod,
   Transaction,
+  TrendGranularity,
 } from '../lib/types'
 import { api } from './client'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000'
 
+// Budget views poll so expenses that arrive in the background (auto-added from
+// email/WhatsApp, or logged from another device) keep the ledger, overview and
+// trends in sync without a manual refresh. They also refetch on window focus.
+const BUDGET_REFETCH = 30000
+
 export function useBudgetSummary(month?: string) {
   return useQuery({
     queryKey: ['budget', 'summary', month ?? 'current'],
     queryFn: () => api.get<BudgetSummary>(`/budget/summary${month ? `?month=${month}` : ''}`),
+    refetchInterval: BUDGET_REFETCH,
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useBudgetTrends(granularity: TrendGranularity, areaId?: string | null) {
+  const area = areaId ?? ''
+  return useQuery({
+    queryKey: ['budget', 'trends', granularity, area],
+    queryFn: () =>
+      api.get<BudgetTrends>(
+        `/budget/trends?granularity=${granularity}${area ? `&areaId=${encodeURIComponent(area)}` : ''}`,
+      ),
+    refetchInterval: BUDGET_REFETCH,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -23,6 +45,8 @@ export function useTransactions(month: string) {
   return useQuery({
     queryKey: ['budget', 'transactions', month],
     queryFn: () => api.get<Transaction[]>(`/budget/transactions?month=${month}`),
+    refetchInterval: BUDGET_REFETCH,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -79,6 +103,7 @@ export function useBudgetActions() {
     addSuggestion: mk((id: string) => api.post(`/budget/suggestions/${id}/add`, {})),
     dismissSuggestion: mk((id: string) => api.post<ExpenseSuggestion>(`/budget/suggestions/${id}/dismiss`, {})),
     bulkAdd: mk((ids: string[]) => api.post<{ added: number }>('/budget/suggestions/bulk-add', { ids })),
+    recategorize: mk((_v: void) => api.post<{ checked: number; updated: number }>('/budget/transactions/recategorize', {})),
   }
 }
 
