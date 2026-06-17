@@ -1479,9 +1479,44 @@ textarea.input {
   border: 1px solid var(--border);
   font-size: 12px;
   color: var(--text-dim);
-  white-space: pre-wrap;
   max-height: 160px;
   overflow: auto;
+}
+.automation-output .md > :first-child {
+  margin-top: 0;
+}
+.automation-output .md > :last-child {
+  margin-bottom: 0;
+}
+.automation-output .md p {
+  margin: 4px 0;
+}
+.automation-output .md ul,
+.automation-output .md ol {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+.automation-output .md li {
+  margin: 2px 0;
+}
+.automation-output .md h1,
+.automation-output .md h2,
+.automation-output .md h3,
+.automation-output .md h4,
+.automation-output .md h5,
+.automation-output .md h6 {
+  font-size: 12.5px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+  color: var(--text);
+}
+.automation-output .md strong {
+  color: var(--text);
+}
+.automation-output .md hr {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid var(--border);
 }
 
 /* Today "Open loops" rows */
@@ -5938,6 +5973,11 @@ a.btn:hover {
   color: var(--accent);
   margin: 4px 0 10px;
   font-family: var(--font-mono);
+}
+.game-over-outcome {
+  margin: -8px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .game-over-high {
   display: inline-flex;

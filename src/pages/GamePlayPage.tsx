@@ -25,7 +25,11 @@ export function GamePlayPage() {
   const [status, setStatus] = useState<Status>('loading')
   const [score, setScore] = useState(0)
   const [restartKey, setRestartKey] = useState(0)
-  const [result, setResult] = useState<{ score: number; record: RecordResult | null } | null>(null)
+  const [result, setResult] = useState<{
+    score: number
+    meta?: Record<string, unknown>
+    record: RecordResult | null
+  } | null>(null)
   const startedAt = useRef<number>(0)
 
   // Lazy-load the scene module for this game.
@@ -59,11 +63,11 @@ export function GamePlayPage() {
         { slug, score: r.score, durationMs, meta: r.meta },
         {
           onSuccess: (res) => {
-            setResult({ score: r.score, record: res })
+            setResult({ score: r.score, meta: r.meta, record: res })
             if (res.isHighScore) toast.show('🏆 New high score!')
             for (const a of res.newAchievements) toast.show(`🏅 Achievement: ${a.label}`)
           },
-          onError: () => setResult({ score: r.score, record: null }),
+          onError: () => setResult({ score: r.score, meta: r.meta, record: null }),
         },
       )
     },
@@ -128,13 +132,24 @@ export function GamePlayPage() {
           />
         )}
 
-        {status === 'over' && result && (
+        {status === 'over' && result && (() => {
+          const won = result.meta?.win === true
+          const durationSec =
+            typeof result.meta?.durationSec === 'number' ? result.meta.durationSec : null
+          // Clear-time games (lower-is-better) record a loss as score 0; show how long
+          // the player lasted instead of a meaningless "0 s".
+          const showSurvival = !def.higherIsBetter && result.score === 0 && durationSec != null
+          const value = showSurvival ? durationSec : result.score
+          const unit = def.higherIsBetter ? '' : 's'
+          const caption = won ? 'Cleared!' : showSurvival ? 'Survived' : null
+          return (
           <div className="game-over-overlay">
             <div className="game-over-card">
               <h2>Game over</h2>
               <p className="game-over-score">
-                {result.score.toLocaleString()} {def.higherIsBetter ? '' : 's'}
+                {value.toLocaleString()} {unit}
               </p>
+              {caption && <p className="game-over-outcome muted small">{caption}</p>}
               {result.record?.isHighScore && (
                 <p className="game-over-high">
                   <Trophy size={15} /> New personal best!
@@ -159,7 +174,8 @@ export function GamePlayPage() {
               </div>
             </div>
           </div>
-        )}
+          )
+        })()}
       </div>
 
       <p className="muted small game-controls">Controls: {def.controls}</p>

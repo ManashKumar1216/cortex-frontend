@@ -12,6 +12,7 @@ import {
   type AutomationInput,
   type AutomationView,
 } from '../api/automations'
+import { Markdown } from '../components/Markdown'
 import { Modal } from '../components/Modal'
 import { Badge, Button, Card, PageHeader, useConfirm, useToast } from '../components/ui'
 import { formatDateTime, useTimeFormat } from '../lib/time'
@@ -115,13 +116,13 @@ export function AutomationsPage() {
           </div>
           <div className="row" style={{ gap: 4 }}>
             {pristine ? (
-              <Button variant="primary" size="sm" icon={<Sparkles size={13} />} loading={activate.isPending} onClick={() => activateBuiltin(a)}>
+              <Button variant="primary" size="sm" icon={<Sparkles size={13} />} loading={activate.isPending && activate.variables?.slug === a.builtinSlug} onClick={() => activateBuiltin(a)}>
                 Activate
               </Button>
             ) : (
               <>
                 {a.enabled && (
-                  <Button variant="ghost" size="sm" icon={<Play size={13} />} loading={run.isPending} onClick={() => runNow(a)}>
+                  <Button variant="ghost" size="sm" icon={<Play size={13} />} loading={run.isPending && run.variables === a.id} onClick={() => runNow(a)}>
                     Run now
                   </Button>
                 )}
@@ -156,7 +157,11 @@ export function AutomationsPage() {
               : ''}
           {a.lastRunAt ? ` · last ${formatDateTime(a.lastRunAt, timeFmt)}` : ''}
         </p>
-        {a.lastOutput && <p className="automation-output">{a.lastOutput}</p>}
+        {a.lastOutput && (
+          <div className="automation-output">
+            <Markdown source={a.lastOutput} />
+          </div>
+        )}
       </Card>
     )
   }

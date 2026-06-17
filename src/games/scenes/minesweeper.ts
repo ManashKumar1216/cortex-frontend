@@ -222,7 +222,9 @@ export const start: GameStarter = (parent, ctx) => {
       if (this.over) return
       this.over = true
       this.revealAllMines()
-      ctx.onGameOver({ score: 0, meta: { win: false } })
+      // Score stays 0 — a loss must not count as a fast clear time. The survival
+      // time rides along in meta so the game-over card can show how long you lasted.
+      ctx.onGameOver({ score: 0, meta: { win: false, durationSec: this.elapsed } })
       this.scene.pause()
     }
 
@@ -230,7 +232,7 @@ export const start: GameStarter = (parent, ctx) => {
       if (this.over) return
       this.over = true
       ctx.onScore(this.elapsed)
-      ctx.onGameOver({ score: this.elapsed, meta: { win: true } })
+      ctx.onGameOver({ score: this.elapsed, meta: { win: true, durationSec: this.elapsed } })
       this.scene.pause()
     }
   }
